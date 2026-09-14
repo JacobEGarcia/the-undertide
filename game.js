@@ -1,4 +1,4 @@
-// THE UNDERTIDE v1 - a small thing in a house of eaters.
+// THE UNDERTIDE v4 - a small thing in a house of eaters.
 // A 3D spiritual sequel in the spirit of Little Nightmares: oversized world,
 // a child alone, grotesque adults, hunger, hiding, dread. three.js, no dialogue.
 import * as THREE from './three.module.js';
@@ -568,7 +568,7 @@ function updatePlayer(dt) {
   player.x += player.vx * dt;
   player.z += player.vz * dt;
   player.z = Math.max(ZMIN, Math.min(ZMAX, player.z));
-  player.x = player.deck === 2 ? Math.max(60.2, Math.min(111.6, player.x)) : Math.max(-9.6, Math.min(43.6, player.x));
+  player.x = player.deck === 3 ? Math.max(119.4, Math.min(180.6, player.x)) : (player.deck === 2 ? Math.max(60.2, Math.min(111.6, player.x)) : Math.max(-9.6, Math.min(43.6, player.x)));
   const pr = 0.26;
   for (const b of blockers) {
     if (player.y < b.top - 0.28 &&
@@ -659,16 +659,24 @@ function updatePlayer(dt) {
       player.respawnTimer = null;
     }, 900);
   }
-  // the vent out of the freezer
-  if (player.deck === 2 && player.x > 106) {
-    player.win = true;
-    fadeEl.style.opacity = 1;
-    msgEl.innerHTML = '<h1>THE COLD KEEPS WHAT IT TAKES</h1><p>but not you. not today</p><p class="dim">THE UNDERTIDE · v3 · the Guests are waiting in v4</p>';
+  // the vent out of the freezer: into the feast
+  if (player.deck === 2 && player.x > 106 && !player.dead) {
+    player.deck = 3; player.dead = true; fadeEl.style.opacity = 1;
+    if (player.respawnTimer) clearTimeout(player.respawnTimer);
+    player.respawnTimer = setTimeout(() => {
+      player.x = 121; player.z = 0; player.y = 0; player.vx = 0; player.vy = 0; player.vz = 0; player.grounded = true;
+      player.checkpoint = { x: 121, z: 0 }; player.dead = false; setFeast(true); fadeEl.style.opacity = 0; player.respawnTimer = null;
+    }, 900);
+  }
+  // the service hatch beyond the Guests
+  if (player.deck === 3 && player.x > 176.5) {
+    player.win = true; fadeEl.style.opacity = 1;
+    msgEl.innerHTML = '<h1>THEY NEVER LOOKED DOWN</h1><p>their plates are empty. you are not.</p><p class="dim">THE UNDERTIDE · v4 · the Nursery breathes beyond the wall</p>';
   }
 }
 
 function drainHunger(dt) {
-  player.hunger = Math.max(0, player.hunger - dt * (100 / 240) * (player.deck === 2 ? 1.5 : 1));
+  player.hunger = Math.max(0, player.hunger - dt * (100 / 240) * (player.deck === 2 ? 1.5 : (player.deck === 3 ? 1.25 : 1)));
   player.growlT -= dt;
   if (player.hunger < 35 && player.growlT <= 0) {
     player.growlT = player.hunger <= 0 ? 5 + Math.random() * 2 : 8 + Math.random() * 4;
@@ -819,9 +827,10 @@ function tick() {
       for (const s of stewards) updateSteward(s, dt);
       updateWatchman(dt);
       updateNomes(dt, t);
+    } else if (player.deck === 2) {
+      updateFreezerSteward(dt); updateCarcasses(dt);
     } else {
-      updateFreezerSteward(dt);
-      updateCarcasses(dt);
+      updateGuests(dt, t);
     }
   }
   // pose the child
@@ -981,10 +990,118 @@ addMorsel(63.5, 0, -1.5);
 addMorsel(100.5, 0, 1.0);
 addMorsel(104.5, 0, -1.8);
 
+
+// ---------------- deck 3: THE FEAST ----------------
+const matFeastFloor = new THREE.MeshStandardMaterial({ color: 0x2b1814, roughness: 0.92 });
+const matCloth = new THREE.MeshStandardMaterial({ color: 0x5a1715, roughness: 0.92 });
+const matGrease = new THREE.MeshStandardMaterial({ color: 0x6d4b23, roughness: 0.35 });
+const feastFog = new THREE.Color(0x170a08);
+function setFeast(on) {
+  if (!on) return;
+  scene.fog.color.copy(feastFog); scene.background.copy(feastFog);
+  scene.fog.density = 0.027;
+}
+
+const feastHides = [
+  { x0: 126.0, x1: 133.0, z0: -1.15, z1: 1.15 },
+  { x0: 139.0, x1: 146.0, z0: -1.15, z1: 1.15 },
+  { x0: 152.0, x1: 159.0, z0: -1.15, z1: 1.15 },
+  { x0: 165.0, x1: 171.5, z0: -1.15, z1: 1.15 },
+];
+hideVolumes.push(...feastHides);
+
+{
+  // Long red dining room, built at ten times the child's scale.
+  solidBox(150, -0.25, 0, 62, 0.5, 8, matFeastFloor, { cast: false });
+  const wall = new THREE.Mesh(new THREE.BoxGeometry(64, 17, 0.7), matWall); wall.position.set(150, 7.8, -3.5); scene.add(wall);
+  const ceil = new THREE.Mesh(new THREE.BoxGeometry(64, 0.6, 10), matDark); ceil.position.set(150, 10.2, 0); scene.add(ceil);
+  // Grimed portraits watch the feast.
+  for (let x=124; x<178; x+=7) {
+    const frame = new THREE.Mesh(new THREE.BoxGeometry(3.0, 4.0, 0.18), matWood); frame.position.set(x, 6.5, -3.05); scene.add(frame);
+    const face = new THREE.Mesh(new THREE.SphereGeometry(0.65, 8, 6), matPale); face.scale.set(0.8,1.4,0.25); face.position.set(x,6.5,-2.85); scene.add(face);
+  }
+  // Four connected banquet tables. Under each cloth is a hiding tunnel.
+  for (const cx of [129.5,142.5,155.5,168.5]) {
+    solidBox(cx, 3.15, 0, 7.4, 0.38, 3.0, matWoodPale, { platform: true });
+    for (const lx of [-3.25,3.25]) for (const lz of [-1.2,1.2])
+      solidBox(cx+lx, 1.45, lz, 0.42, 2.9, 0.42, matWood, { blocker: true });
+    for (const z of [-1.53,1.53]) {
+      const cloth = new THREE.Mesh(new THREE.BoxGeometry(7.3, 1.65, 0.08), matCloth); cloth.position.set(cx,2.35,z); scene.add(cloth);
+    }
+    // mountains of food and stacked plates
+    for (let j=0;j<7;j++) {
+      const food = new THREE.Mesh(new THREE.DodecahedronGeometry(0.22+Math.random()*0.25), matGrease);
+      food.scale.y=0.65; food.position.set(cx-2.6+j*0.85,3.5+(j%2)*0.1,(j%3-1)*0.65); scene.add(food);
+    }
+    for (const px of [cx-2.3,cx,cx+2.3]) {
+      const plate = new THREE.Mesh(new THREE.CylinderGeometry(0.55,0.48,0.1,12),matIron); plate.position.set(px,3.39,0.8); scene.add(plate);
+    }
+  }
+  // Narrow gaps force exposed crossings between the tables.
+  for (const x of [125.8,138.8,151.8,164.8,172.2]) {
+    const chair = solidBox(x, 1.35, 2.05, 1.5, 0.22, 1.3, matWood, { platform: true });
+    solidBox(x, 2.5, 2.58, 1.5, 2.2, 0.18, matWood, { blocker: true });
+  }
+  for (const lx of [123,136,149,162,175]) addLamp(lx,7.1,-0.3);
+  // exit hatch
+  const ef = new THREE.Mesh(new THREE.BoxGeometry(2.5,3.2,0.6),matIron); ef.position.set(178,1.6,-2.5); scene.add(ef);
+  const em = new THREE.Mesh(new THREE.PlaneGeometry(1.8,2.45),new THREE.MeshBasicMaterial({color:0x020404})); em.position.set(178,1.5,-2.17); scene.add(em);
+  const glow = new THREE.PointLight(0x8eb7a0,7,7,2); glow.position.set(177,2.2,-1.5); scene.add(glow);
+}
+
+// The Guests: seated mountains that only notice movement at their feet.
+const guests = [];
+function makeGuest(x,z,faceZ,phase) {
+  const g = new THREE.Group();
+  const belly = new THREE.Mesh(new THREE.SphereGeometry(1.45,14,10),matApron); belly.scale.set(1.0,1.25,0.9); belly.position.y=3.15; belly.castShadow=true; g.add(belly);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.68,12,9),matPale); head.scale.set(1.15,1.0,0.9); head.position.set(0,5.05,faceZ*0.32); head.castShadow=true; g.add(head);
+  const mouth = new THREE.Mesh(new THREE.TorusGeometry(0.20,0.09,6,10,Math.PI),new THREE.MeshStandardMaterial({color:0x2b0808})); mouth.rotation.x=Math.PI/2; mouth.rotation.z=faceZ>0?0:Math.PI; mouth.position.set(0,4.9,faceZ*0.93); g.add(mouth);
+  const handGeo = new THREE.SphereGeometry(0.34,8,6);
+  const handL = new THREE.Mesh(handGeo,matPale), handR = new THREE.Mesh(handGeo,matPale); g.add(handL,handR);
+  g.position.set(x,0,z); scene.add(g);
+  guests.push({mesh:g,x,z,faceZ,phase,state:'eat',reach:0,handL,handR,noticed:0});
+}
+for (let i=0;i<8;i++) {
+  const x=128+i*6.1, side=i%2?1:-1;
+  makeGuest(x,side*2.35,-side,i*0.83);
+}
+
+function guestCanReach(g) {
+  if (player.deck!==3 || player.dead || player.win || player.hidden) return false;
+  const dx=player.x-g.x, dz=player.z-g.z;
+  // Running, landing, or a starving growl attracts a reach across the aisle.
+  const noisy=Math.hypot(player.vx,player.vz)>2.0 || player.hunger<18;
+  return Math.abs(dx)<2.25 && Math.abs(dz)<4.2 && (noisy || Math.hypot(dx,dz)<1.25);
+}
+function updateGuests(dt,t) {
+  for (const g of guests) {
+    g.phase+=dt;
+    if (g.state==='eat' && guestCanReach(g)) { g.state='reach'; g.reach=0; g.noticed++; }
+    if (g.state==='reach') {
+      g.reach+=dt;
+      const q=Math.min(1,g.reach/0.55), back=Math.max(0,Math.min(1,(1.25-g.reach)/0.45));
+      const ext=Math.sin(Math.min(Math.PI,g.reach/1.15*Math.PI))*3.1;
+      g.handL.position.set(-0.55,3.9,g.faceZ*(0.9+ext)); g.handR.position.set(0.55,3.8,g.faceZ*(0.7+ext*0.88));
+      if (g.reach>0.36 && g.reach<1.0 && !player.hidden && Math.abs(player.x-g.x)<1.35 && Math.abs(player.z-(g.z+g.faceZ*ext))<1.1 && player.y<1.7) caught(g);
+      if (g.reach>1.35) { g.state='chew'; g.reach=0.7; }
+    } else {
+      g.reach=Math.max(0,g.reach-dt);
+      const chew=Math.sin(g.phase*5)*0.12;
+      g.handL.position.set(-0.55,3.8,g.faceZ*(0.55+chew)); g.handR.position.set(0.55,3.75,g.faceZ*(0.85-chew));
+      if (g.state==='chew') { g.reach-=dt; if(g.reach<=0) g.state='eat'; }
+    }
+    g.mesh.userData = g.mesh.userData || {};
+    g.mesh.rotation.z=Math.sin(g.phase*1.7)*0.025;
+  }
+}
+
+// morsels stolen from beneath the feast
+addMorsel(130.5,0,-0.2); addMorsel(143.8,0,0.45); addMorsel(157.0,0,-0.55); addMorsel(170.0,0,0.2);
+
 // ---------------- QA hooks ----------------
 window.__frames = 0;
 window.__ut = {
-  v: 3,
+  v: 4,
   player: () => ({ x: +player.x.toFixed(2), y: +player.y.toFixed(2), z: +player.z.toFixed(2), hunger: +player.hunger.toFixed(1), hidden: player.hidden, sneak: player.sneak, grounded: player.grounded, caught: player.caught, win: player.win, dead: player.dead, growled: player.growled || 0 }),
   stewards: () => stewards.map(s => ({ x: +s.x.toFixed(2), z: +s.z.toFixed(2), state: s.state })),
   noises: () => noiseEvents.length,
@@ -1015,4 +1132,7 @@ window.__ut = {
   grab: () => tryGrabCarcass(),
   release: () => releaseCarcass(),
   freezerSteward: () => ({ x: +freezerSteward.x.toFixed(2), state: freezerSteward.state }),
+  guests: () => guests.map(g => ({ x:+g.x.toFixed(2), z:+g.z.toFixed(2), state:g.state, noticed:g.noticed })),
+  guestCanReach: (i) => guestCanReach(guests[i]),
+  guestReset: () => { for(const g of guests){g.state='eat';g.reach=0;} },
 };
