@@ -1,4 +1,4 @@
-// THE UNDERTIDE v10 - a small thing in a house of eaters.
+// THE UNDERTIDE v11 - a small thing in a house of eaters.
 // A 3D spiritual sequel in the spirit of Little Nightmares: oversized world,
 // a child alone, grotesque adults, hunger, hiding, dread. three.js, no dialogue.
 import * as THREE from './three.module.js';
@@ -568,7 +568,7 @@ function updatePlayer(dt) {
   player.x += player.vx * dt;
   player.z += player.vz * dt;
   player.z = Math.max(ZMIN, Math.min(ZMAX, player.z));
-  player.x = player.deck === 9 ? Math.max(556.4, Math.min(634.6, player.x)) : (player.deck === 8 ? Math.max(474.4, Math.min(548.6, player.x)) : (player.deck === 7 ? Math.max(394.4, Math.min(466.6, player.x)) : (player.deck === 6 ? Math.max(322.4, Math.min(388.6, player.x)) : (player.deck === 5 ? Math.max(254.4, Math.min(314.6, player.x)) : (player.deck === 4 ? Math.max(189.4, Math.min(246.6, player.x)) : (player.deck === 3 ? Math.max(119.4, Math.min(180.6, player.x)) : (player.deck === 2 ? Math.max(60.2, Math.min(111.6, player.x)) : Math.max(-9.6, Math.min(43.6, player.x)))))))));
+  player.x = player.deck === 10 ? Math.max(641.4, Math.min(720.6, player.x)) : (player.deck === 9 ? Math.max(556.4, Math.min(634.6, player.x)) : (player.deck === 8 ? Math.max(474.4, Math.min(548.6, player.x)) : (player.deck === 7 ? Math.max(394.4, Math.min(466.6, player.x)) : (player.deck === 6 ? Math.max(322.4, Math.min(388.6, player.x)) : (player.deck === 5 ? Math.max(254.4, Math.min(314.6, player.x)) : (player.deck === 4 ? Math.max(189.4, Math.min(246.6, player.x)) : (player.deck === 3 ? Math.max(119.4, Math.min(180.6, player.x)) : (player.deck === 2 ? Math.max(60.2, Math.min(111.6, player.x)) : Math.max(-9.6, Math.min(43.6, player.x))))))))));
   const pr = 0.26;
   for (const b of blockers) {
     if (player.y < b.top - 0.28 &&
@@ -686,7 +686,8 @@ function updatePlayer(dt) {
   if(player.deck===6&&player.x>385.5&&!player.dead){player.deck=7;player.dead=true;fadeEl.style.opacity=1;if(player.respawnTimer)clearTimeout(player.respawnTimer);player.respawnTimer=setTimeout(()=>{player.x=396;player.z=0;player.y=0;player.vx=player.vy=player.vz=0;player.grounded=true;player.checkpoint={x:396,z:0};player.dead=false;setBellTower(true);fadeEl.style.opacity=0;player.respawnTimer=null;},900);}
   if(player.deck===7&&player.x>463.5&&!player.dead){player.deck=8;player.dead=true;fadeEl.style.opacity=1;if(player.respawnTimer)clearTimeout(player.respawnTimer);player.respawnTimer=setTimeout(()=>{player.x=476;player.z=0;player.y=0;player.vx=player.vy=player.vz=0;player.grounded=true;player.checkpoint={x:476,z:0};player.dead=false;setDormitory(true);fadeEl.style.opacity=0;player.respawnTimer=null;},900);}
   if(player.deck===8&&player.x>545.5&&!player.dead){player.deck=9;player.dead=true;fadeEl.style.opacity=1;if(player.respawnTimer)clearTimeout(player.respawnTimer);player.respawnTimer=setTimeout(()=>{player.x=558;player.z=0;player.y=0;player.vx=player.vy=player.vz=0;player.grounded=true;player.checkpoint={x:558,z:0};player.dead=false;setChapel(true);fadeEl.style.opacity=0;player.respawnTimer=null;},900);}
-  if(player.deck===9&&player.x>631.5){player.win=true;fadeEl.style.opacity=1;msgEl.innerHTML='<h1>EVERY FACE TURNED AFTER YOU</h1><p>none saw the small thing above.</p><p class="dim">THE UNDERTIDE · v10 · the Maw opens below</p>';}
+  if(player.deck===9&&player.x>631.5&&!player.dead){player.deck=10;player.dead=true;fadeEl.style.opacity=1;if(player.respawnTimer)clearTimeout(player.respawnTimer);player.respawnTimer=setTimeout(()=>{player.x=644;player.z=0;player.y=0;player.vx=player.vy=player.vz=0;player.grounded=true;player.checkpoint={x:644,z:0};player.dead=false;setMaw(true);fadeEl.style.opacity=0;player.respawnTimer=null;},900);}
+  if(player.deck===10&&player.x>717.5){player.win=true;fadeEl.style.opacity=1;msgEl.innerHTML='<h1>THE HOUSE SWALLOWED</h1><p>but the small thing climbed between its teeth.</p><p class="dim">THE UNDERTIDE · v11 · end of the descent</p>';}
 
 
 
@@ -859,9 +860,12 @@ function tick() {
       updateBellTower(dt, t);
     } else if (player.deck === 8) {
       updateDormitory(dt, t);
-    } else {
+    } else if (player.deck === 9) {
       updateChapel(dt, t);
+    } else {
+      updateMaw(dt, t);
     }
+    if ((window.__frames & 15) === 0) cullDistantDecks();
   }
   // pose the child
   child.position.set(player.x, player.y, player.z);
@@ -1427,10 +1431,68 @@ function updateChapel(dt,t){
 }
 addMorsel(566,1.4,0);addMorsel(587,0,0);addMorsel(608,1.4,0);addMorsel(628,4.2,-1.2);
 
+// ---------------- deck 10: THE MAW ----------------
+const matFlesh=new THREE.MeshStandardMaterial({color:0x3d1618,roughness:.82,metalness:.05});
+const matFleshWet=new THREE.MeshStandardMaterial({color:0x701f25,roughness:.3,metalness:.12});
+const matBone=new THREE.MeshStandardMaterial({color:0xb8aa87,roughness:.78});
+const mawFog=new THREE.Color(0x160708),mawFloor=[],ribs=[],mawLamps=[];
+let mawOn=false,mawContractions=0,mawCrush=0,tongueLamp=0,tongueFollows=0;
+function setMaw(on){if(!on)return;mawOn=true;scene.fog.color.copy(mawFog);scene.background.copy(mawFog);scene.fog.density=.043;}
+{
+ const wall=new THREE.Mesh(new THREE.BoxGeometry(82,20,.7),matFlesh);wall.position.set(680,8,-3.55);scene.add(wall);
+ const ceil=new THREE.Mesh(new THREE.BoxGeometry(82,.8,9),matFlesh);ceil.position.set(680,10,0);scene.add(ceil);
+ for(let i=0;i<16;i++){
+   const x=642.5+i*5;
+   const f=new THREE.Mesh(new THREE.BoxGeometry(5.1,.55,7.5),matFleshWet);f.position.set(x,-.27,0);f.receiveShadow=true;scene.add(f);
+   mawFloor.push({mesh:f,x,phase:i*.66,wave:0});
+ }
+ // The rings make the room read as the inside of something much larger than the child.
+ for(let i=0;i<13;i++){
+   const x=645+i*6;
+   const arch=new THREE.Mesh(new THREE.TorusGeometry(4.05,.18,7,22,Math.PI*1.72),matBone);arch.rotation.z=.14;arch.position.set(x,4.15,0);scene.add(arch);
+   const side=i%2?-1:1,y=1.15+(i%3)*.65;
+   const shelf=solidBox(x,y-.16,side*1.0,4.4,.32,1.55,matBone,{platform:true});
+   ribs.push({mesh:arch,shelf,x,y,side});
+ }
+ for(const [i,x] of [650,668,686,704].entries()){
+   const l=addLamp(x,7.7,i%2?1.25:-1.2);l.userData.base=30;l.userData.mawWarm=true;mawLamps.push(l);
+ }
+ for(const x of [651,675,699,714]){const glow=new THREE.PointLight(0xff6a42,25,18,1.65);glow.position.set(x,4,2.4);scene.add(glow);}
+ const mouth=new THREE.Mesh(new THREE.TorusGeometry(2.2,.65,10,18),matFleshWet);mouth.rotation.y=Math.PI/2;mouth.position.set(639,2.1,-2.65);scene.add(mouth);
+}
+const tongue={x:641,target:650,head:null,body:null,forced:null};
+{
+ tongue.body=new THREE.Mesh(new THREE.BoxGeometry(1,.48,.82),matFleshWet);scene.add(tongue.body);
+ tongue.head=new THREE.Mesh(new THREE.SphereGeometry(.72,12,9),matFleshWet);tongue.head.scale.set(1.4,.62,.85);scene.add(tongue.head);
+}
+function warmestMawLamp(t){
+ if(tongue.forced!==null)return Math.max(0,Math.min(mawLamps.length-1,tongue.forced));
+ let best=0,heat=-9;for(let i=0;i<mawLamps.length;i++){const h=Math.sin(t*.82+mawLamps[i].userData.phase)*.75+Math.sin(t*.31+i*2.4)*.25;if(h>heat){heat=h;best=i;}}
+ return best;
+}
+function updateMaw(dt,t){
+ let localWave=-1;
+ for(const f of mawFloor){f.wave=(Math.sin(t*2.0-f.phase)+1)/2;f.mesh.scale.z=.48+.52*(1-f.wave);f.mesh.position.y=-.27+f.wave*.12;if(Math.abs(player.x-f.x)<2.7)localWave=f.wave;}
+ if(localWave>.78&&player.y<.6&&!player.hidden){mawCrush+=dt;player.z*=Math.max(0,1-dt*4);if(mawCrush>.08)mawContractions++;if(mawCrush>.48)caught(tongue);}else mawCrush=Math.max(0,mawCrush-dt*2.5);
+ const li=warmestMawLamp(t);if(li!==tongueLamp){tongueLamp=li;tongueFollows++;}tongue.target=mawLamps[li].position.x;
+ tongue.x+=(tongue.target-tongue.x)*Math.min(1,dt*.82);
+ const len=Math.max(1,tongue.x-639);tongue.body.scale.x=len;tongue.body.position.set(639+len/2,.78,-.85);tongue.head.position.set(tongue.x,.76,-.75);
+ if(!player.hidden&&!player.dead&&player.y<1.35&&Math.hypot(player.x-tongue.x,player.z+.75)<1.35)caught(tongue);
+}
+addMorsel(651,1.2,1);addMorsel(674,1.85,-1);addMorsel(697,2.5,1);addMorsel(713,1.2,-1);
+
+// Keep only the current deck and its immediate border resident in the camera.
+// The world remains physically complete; this removes far-x silhouettes bleeding into later rooms.
+let cullEntries=null,cullPasses=0;
+function cullDistantDecks(){
+ if(!cullEntries){cullEntries=[];const box=new THREE.Box3();for(const o of scene.children){if(o===child||o===camera||o.type==='HemisphereLight'||o.type==='DirectionalLight')continue;box.setFromObject(o);if(!Number.isFinite(box.min.x)||!Number.isFinite(box.max.x))continue;cullEntries.push({o,min:box.min.x,max:box.max.x});}}
+ const lo=player.x-47,hi=player.x+47;for(const e of cullEntries)e.o.visible=!(e.max<lo||e.min>hi);cullPasses++;
+}
+
 // ---------------- QA hooks ----------------
 window.__frames = 0;
 window.__ut = {
-  v: 10,
+  v: 11,
   player: () => ({ x: +player.x.toFixed(2), y: +player.y.toFixed(2), z: +player.z.toFixed(2), hunger: +player.hunger.toFixed(1), hidden: player.hidden, sneak: player.sneak, grounded: player.grounded, caught: player.caught, win: player.win, dead: player.dead, growled: player.growled || 0 }),
   stewards: () => stewards.map(s => ({ x: +s.x.toFixed(2), z: +s.z.toFixed(2), state: s.state })),
   noises: () => noiseEvents.length,
@@ -1485,5 +1547,10 @@ window.__ut = {
   wakeSleeper: (i) => wakeSleeper(sleepers[i]),
   chapel: () => ({touches:floorTouches,turned:headsTurned,heads:mannequins.map(m=>({turn:+m.turn.toFixed(2),alerts:m.alerts})),chandeliers:chandeliers.map(c=>({x:+c.mesh.position.x.toFixed(2),y:c.y}))}),
   chapelTouch: () => chapelFloorTouch(),
+  maw: () => ({contractions:mawContractions,crush:+mawCrush.toFixed(2),tongueX:+tongue.x.toFixed(2),target:+tongue.target.toFixed(2),lamp:tongueLamp,follows:tongueFollows,ribs:ribs.length,floors:mawFloor.map(f=>+f.wave.toFixed(2)),culled:cullEntries?cullEntries.filter(e=>!e.o.visible).length:0,cullPasses}),
+  forceMawLamp: (i) => {tongue.forced=i===null?null:Math.max(0,Math.min(3,i));},
+  mawSafe: () => {player.hidden=true;},
+  forceMawWave: (v=1) => {for(const f of mawFloor)if(Math.abs(player.x-f.x)<3)f.wave=v;mawCrush=.5;mawContractions++;},
+  cull: () => {cullDistantDecks();return {passes:cullPasses,hidden:cullEntries.filter(e=>!e.o.visible).length};},
   camSnap: () => { camX=player.x+2; },
 };
