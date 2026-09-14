@@ -1,4 +1,4 @@
-// THE UNDERTIDE v5 - a small thing in a house of eaters.
+// THE UNDERTIDE v6 - a small thing in a house of eaters.
 // A 3D spiritual sequel in the spirit of Little Nightmares: oversized world,
 // a child alone, grotesque adults, hunger, hiding, dread. three.js, no dialogue.
 import * as THREE from './three.module.js';
@@ -568,7 +568,7 @@ function updatePlayer(dt) {
   player.x += player.vx * dt;
   player.z += player.vz * dt;
   player.z = Math.max(ZMIN, Math.min(ZMAX, player.z));
-  player.x = player.deck === 4 ? Math.max(189.4, Math.min(246.6, player.x)) : (player.deck === 3 ? Math.max(119.4, Math.min(180.6, player.x)) : (player.deck === 2 ? Math.max(60.2, Math.min(111.6, player.x)) : Math.max(-9.6, Math.min(43.6, player.x))));
+  player.x = player.deck === 5 ? Math.max(254.4, Math.min(314.6, player.x)) : (player.deck === 4 ? Math.max(189.4, Math.min(246.6, player.x)) : (player.deck === 3 ? Math.max(119.4, Math.min(180.6, player.x)) : (player.deck === 2 ? Math.max(60.2, Math.min(111.6, player.x)) : Math.max(-9.6, Math.min(43.6, player.x)))));
   const pr = 0.26;
   for (const b of blockers) {
     if (player.y < b.top - 0.28 &&
@@ -677,14 +677,17 @@ function updatePlayer(dt) {
       player.checkpoint={x:191,z:0}; player.dead=false; setNursery(true); fadeEl.style.opacity=0; player.respawnTimer=null;
     },900);
   }
-  if (player.deck === 4 && player.x > 243.5) {
-    player.win=true; fadeEl.style.opacity=1;
-    msgEl.innerHTML='<h1>THE SMALL ONES LEARNED TO WAIT</h1><p>you learned to look back.</p><p class="dim">THE UNDERTIDE · v5 · something sings beneath the Baths</p>';
+  if (player.deck === 4 && player.x > 243.5 && !player.dead) {
+    player.deck=5; player.dead=true; fadeEl.style.opacity=1;
+    if(player.respawnTimer)clearTimeout(player.respawnTimer);
+    player.respawnTimer=setTimeout(()=>{player.x=256;player.z=0;player.y=0;player.vx=player.vy=player.vz=0;player.grounded=true;player.checkpoint={x:256,z:0};player.dead=false;setBaths(true);fadeEl.style.opacity=0;player.respawnTimer=null;},900);
   }
+  if(player.deck===5&&player.x>311.5){player.win=true;fadeEl.style.opacity=1;msgEl.innerHTML='<h1>THE WATER FORGOT YOUR NAME</h1><p>but something below remembers your steps.</p><p class="dim">THE UNDERTIDE · v6 · the Furnace waits below</p>';}
+
 }
 
 function drainHunger(dt) {
-  player.hunger = Math.max(0, player.hunger - dt * (100 / 240) * (player.deck === 2 ? 1.5 : (player.deck === 3 ? 1.25 : (player.deck === 4 ? 1.15 : 1))));
+  player.hunger = Math.max(0, player.hunger - dt * (100 / 240) * (player.deck === 2 ? 1.5 : (player.deck === 3 ? 1.25 : (player.deck === 4 ? 1.15 : (player.deck === 5 ? 1.35 : 1)))));
   player.growlT -= dt;
   if (player.hunger < 35 && player.growlT <= 0) {
     player.growlT = player.hunger <= 0 ? 5 + Math.random() * 2 : 8 + Math.random() * 4;
@@ -839,8 +842,10 @@ function tick() {
       updateFreezerSteward(dt); updateCarcasses(dt);
     } else if (player.deck === 3) {
       updateGuests(dt, t);
-    } else {
+    } else if (player.deck === 4) {
       updateNursery(dt, t);
+    } else {
+      updateBaths(dt, t);
     }
   }
   // pose the child
@@ -1179,10 +1184,55 @@ function updateNursery(dt,t){
 }
 addMorsel(203,0,-.5);addMorsel(218,0,1.5);addMorsel(232,0,-.2);addMorsel(241,0,.4);
 
+
+// ---------------- deck 5: THE BATHS ----------------
+const matTile=new THREE.MeshStandardMaterial({color:0x496163,roughness:.52});
+const matWater=new THREE.MeshPhysicalMaterial({color:0x173f45,transparent:true,opacity:.72,roughness:.18,metalness:.05});
+const bathsFog=new THREE.Color(0x071316), ripples=[];
+let bathNoiseCount=0, bathCaughtCount=0;
+function setBaths(on){if(!on)return;scene.fog.color.copy(bathsFog);scene.background.copy(bathsFog);scene.fog.density=.025;}
+{
+ solidBox(284.5,-.25,0,61,.5,8,matTile,{cast:false});
+ const wall=new THREE.Mesh(new THREE.BoxGeometry(63,16,.7),matWall);wall.position.set(284.5,7.5,-3.5);scene.add(wall);
+ const ceil=new THREE.Mesh(new THREE.BoxGeometry(63,.6,10),matDark);ceil.position.set(284.5,9.5,0);scene.add(ceil);
+ // ankle-deep water plane over the whole room
+ const water=new THREE.Mesh(new THREE.PlaneGeometry(61,8,24,4),matWater);water.rotation.x=-Math.PI/2;water.position.set(284.5,.13,0);scene.add(water);
+ // monumental tubs and pipework
+ for(const cx of [264,280,297]){
+  solidBox(cx,1.15,-1.35,7,2.3,2.4,matPale,{platform:true,blocker:true});
+  const basin=new THREE.Mesh(new THREE.BoxGeometry(5.7,.3,1.7),matIron);basin.position.set(cx,2.32,-1.35);scene.add(basin);
+ }
+ for(const x of [259,271,287,304]){const pipe=new THREE.Mesh(new THREE.CylinderGeometry(.18,.18,8,8),matIron);pipe.position.set(x,4.3,-2.9);scene.add(pipe);}
+ for(const x of [258,273,288,303]){const pt=new THREE.PointLight(0x9fdfe0,13,12,1.9);pt.position.set(x,5.2,-.2);scene.add(pt);}
+ // dry laundry carts are hiding islands
+ for(const cx of [270,292,306]){solidBox(cx,.7,1.1,3.2,1.4,2.2,matWood,{blocker:true});hideVolumes.push({x0:cx-1.45,x1:cx+1.45,z0:.1,z1:2.05});}
+ const drain=new THREE.Mesh(new THREE.CylinderGeometry(1.2,1.2,.08,24),matIron);drain.position.set(313,.04,-1.5);scene.add(drain);
+}
+const thing={x:267,z:0,tx:267,tz:0,state:'listen',wait:0,ripplesFollowed:0,mesh:null};
+{
+ const g=new THREE.Group();
+ const back=new THREE.Mesh(new THREE.SphereGeometry(1.15,18,10),new THREE.MeshStandardMaterial({color:0x102b2c,roughness:.2}));back.scale.set(1.8,.22,.8);g.add(back);
+ for(let i=0;i<5;i++){const fin=new THREE.Mesh(new THREE.ConeGeometry(.13,.8,6),matDark);fin.position.set(-.7+i*.35,.05,0);fin.rotation.z=.3;g.add(fin);}g.position.set(thing.x,.06,thing.z);scene.add(g);thing.mesh=g;
+}
+function bathRipple(x,z,r=1){
+ bathNoiseCount++; const mesh=new THREE.Mesh(new THREE.RingGeometry(.12,.17,24),new THREE.MeshBasicMaterial({color:0xb3eef0,transparent:true,opacity:.7,side:THREE.DoubleSide}));mesh.rotation.x=-Math.PI/2;mesh.position.set(x,.16,z);scene.add(mesh);ripples.push({mesh,x,z,age:0,r});thing.tx=x;thing.tz=z;thing.state='follow';thing.ripplesFollowed++;
+}
+function updateBaths(dt,t){
+ const spd=Math.hypot(player.vx,player.vz);
+ if(player.grounded&&spd>.25&&!player.hidden){player.splashAcc=(player.splashAcc||0)+dt;const gap=player.sneak?.85:.32;if(player.splashAcc>gap){player.splashAcc=0;bathRipple(player.x,player.z,player.sneak?2.5:8);}}
+ for(let i=ripples.length-1;i>=0;i--){const r=ripples[i];r.age+=dt;const q=r.age*2.4;r.mesh.scale.setScalar(1+q*r.r);r.mesh.material.opacity=Math.max(0,.7-r.age*.42);if(r.age>1.7){scene.remove(r.mesh);ripples.splice(i,1);}}
+ if(thing.state==='follow'){
+  const dx=thing.tx-thing.x,dz=thing.tz-thing.z,d=Math.hypot(dx,dz);if(d>.15){thing.x+=dx/d*2.65*dt;thing.z+=dz/d*2.65*dt;}else{thing.state='listen';thing.wait=1.2;}
+ }else{thing.wait-=dt;if(thing.wait<=0){thing.x+=Math.sin(t*.6)*.12*dt;}}
+ thing.mesh.position.set(thing.x,.05+Math.sin(t*3)*.025,thing.z);thing.mesh.rotation.y=Math.atan2(thing.tz-thing.z,thing.tx-thing.x);
+ if(!player.hidden&&!player.dead&&Math.hypot(player.x-thing.x,player.z-thing.z)<1.0&&player.y<1.4){bathCaughtCount++;caught(thing);}
+}
+addMorsel(265,2.3,-1.2);addMorsel(278,0,1.6);addMorsel(298,2.3,-1.2);addMorsel(307,0,-.3);
+
 // ---------------- QA hooks ----------------
 window.__frames = 0;
 window.__ut = {
-  v: 5,
+  v: 6,
   player: () => ({ x: +player.x.toFixed(2), y: +player.y.toFixed(2), z: +player.z.toFixed(2), hunger: +player.hunger.toFixed(1), hidden: player.hidden, sneak: player.sneak, grounded: player.grounded, caught: player.caught, win: player.win, dead: player.dead, growled: player.growled || 0 }),
   stewards: () => stewards.map(s => ({ x: +s.x.toFixed(2), z: +s.z.toFixed(2), state: s.state })),
   noises: () => noiseEvents.length,
@@ -1221,4 +1271,7 @@ window.__ut = {
   nurseryForce: (on) => { nurseryForced=on===null?null:!!on; },
   watches: (i) => childWatches(dolls[i]),
   face: (f) => { player.face=f<0?-1:1; },
+  bathThing: () => ({x:+thing.x.toFixed(2),z:+thing.z.toFixed(2),state:thing.state,followed:thing.ripplesFollowed,caught:bathCaughtCount}),
+  bathRipple: (x,z,r=8) => bathRipple(x,z,r),
+  bathNoises: () => bathNoiseCount,
 };
