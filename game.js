@@ -1,4 +1,4 @@
-// THE UNDERTIDE v4 - a small thing in a house of eaters.
+// THE UNDERTIDE v5 - a small thing in a house of eaters.
 // A 3D spiritual sequel in the spirit of Little Nightmares: oversized world,
 // a child alone, grotesque adults, hunger, hiding, dread. three.js, no dialogue.
 import * as THREE from './three.module.js';
@@ -568,7 +568,7 @@ function updatePlayer(dt) {
   player.x += player.vx * dt;
   player.z += player.vz * dt;
   player.z = Math.max(ZMIN, Math.min(ZMAX, player.z));
-  player.x = player.deck === 3 ? Math.max(119.4, Math.min(180.6, player.x)) : (player.deck === 2 ? Math.max(60.2, Math.min(111.6, player.x)) : Math.max(-9.6, Math.min(43.6, player.x)));
+  player.x = player.deck === 4 ? Math.max(189.4, Math.min(246.6, player.x)) : (player.deck === 3 ? Math.max(119.4, Math.min(180.6, player.x)) : (player.deck === 2 ? Math.max(60.2, Math.min(111.6, player.x)) : Math.max(-9.6, Math.min(43.6, player.x))));
   const pr = 0.26;
   for (const b of blockers) {
     if (player.y < b.top - 0.28 &&
@@ -668,15 +668,23 @@ function updatePlayer(dt) {
       player.checkpoint = { x: 121, z: 0 }; player.dead = false; setFeast(true); fadeEl.style.opacity = 0; player.respawnTimer = null;
     }, 900);
   }
-  // the service hatch beyond the Guests
-  if (player.deck === 3 && player.x > 176.5) {
-    player.win = true; fadeEl.style.opacity = 1;
-    msgEl.innerHTML = '<h1>THEY NEVER LOOKED DOWN</h1><p>their plates are empty. you are not.</p><p class="dim">THE UNDERTIDE · v4 · the Nursery breathes beyond the wall</p>';
+  // the service hatch beyond the Guests: the Nursery
+  if (player.deck === 3 && player.x > 176.5 && !player.dead) {
+    player.deck = 4; player.dead = true; fadeEl.style.opacity = 1;
+    if (player.respawnTimer) clearTimeout(player.respawnTimer);
+    player.respawnTimer = setTimeout(() => {
+      player.x=191; player.z=0; player.y=0; player.vx=player.vy=player.vz=0; player.grounded=true;
+      player.checkpoint={x:191,z:0}; player.dead=false; setNursery(true); fadeEl.style.opacity=0; player.respawnTimer=null;
+    },900);
+  }
+  if (player.deck === 4 && player.x > 243.5) {
+    player.win=true; fadeEl.style.opacity=1;
+    msgEl.innerHTML='<h1>THE SMALL ONES LEARNED TO WAIT</h1><p>you learned to look back.</p><p class="dim">THE UNDERTIDE · v5 · something sings beneath the Baths</p>';
   }
 }
 
 function drainHunger(dt) {
-  player.hunger = Math.max(0, player.hunger - dt * (100 / 240) * (player.deck === 2 ? 1.5 : (player.deck === 3 ? 1.25 : 1)));
+  player.hunger = Math.max(0, player.hunger - dt * (100 / 240) * (player.deck === 2 ? 1.5 : (player.deck === 3 ? 1.25 : (player.deck === 4 ? 1.15 : 1))));
   player.growlT -= dt;
   if (player.hunger < 35 && player.growlT <= 0) {
     player.growlT = player.hunger <= 0 ? 5 + Math.random() * 2 : 8 + Math.random() * 4;
@@ -829,8 +837,10 @@ function tick() {
       updateNomes(dt, t);
     } else if (player.deck === 2) {
       updateFreezerSteward(dt); updateCarcasses(dt);
-    } else {
+    } else if (player.deck === 3) {
       updateGuests(dt, t);
+    } else {
+      updateNursery(dt, t);
     }
   }
   // pose the child
@@ -1098,10 +1108,81 @@ function updateGuests(dt,t) {
 // morsels stolen from beneath the feast
 addMorsel(130.5,0,-0.2); addMorsel(143.8,0,0.45); addMorsel(157.0,0,-0.55); addMorsel(170.0,0,0.2);
 
+
+// ---------------- deck 4: THE NURSERY ----------------
+const matNursery = new THREE.MeshStandardMaterial({color:0x27303a,roughness:0.95});
+const matPorcelain = new THREE.MeshStandardMaterial({color:0xd8d8cf,roughness:0.34});
+const matCrack = new THREE.MeshStandardMaterial({color:0x171a1a,roughness:0.8});
+const nurseryFog = new THREE.Color(0x080b12);
+const nurseryHides=[{x0:201,x1:204,z0:-2,z1:1.8},{x0:224,x1:227,z0:-2,z1:1.8}];
+hideVolumes.push(...nurseryHides);
+let nurseryTime=0, nurseryLightsOn=true, nurseryForced=null;
+const nurseryLamps=[];
+function setNursery(on){if(!on)return;scene.fog.color.copy(nurseryFog);scene.background.copy(nurseryFog);scene.fog.density=.03;nurseryTime=0;nurseryLightsOn=true;}
+{
+  solidBox(218,-.25,0,58,.5,8,matNursery,{cast:false});
+  const wall=new THREE.Mesh(new THREE.BoxGeometry(60,15,.7),matWall);wall.position.set(218,7,-3.5);scene.add(wall);
+  const ceil=new THREE.Mesh(new THREE.BoxGeometry(60,.6,10),matDark);ceil.position.set(218,9,0);scene.add(ceil);
+  // child-scale beds become towering barred cages.
+  for(const cx of [196,211,233]){
+    solidBox(cx,.65,-1.45,5,1.3,2.3,matWood,{platform:true,blocker:true});
+    for(let k=-2;k<=2;k++){const bar=new THREE.Mesh(new THREE.CylinderGeometry(.04,.04,2.2,5),matIron);bar.position.set(cx+k*.95,1.75,-.35);scene.add(bar);}
+  }
+  // toy chests provide hiding pockets.
+  for(const cx of [202.5,225.5]){
+    solidBox(cx,.65,.5,3,1.3,2.3,matWoodPale,{blocker:true});
+    const lid=new THREE.Mesh(new THREE.BoxGeometry(3.2,.18,2.5),matWood);lid.position.set(cx,1.6,.15);lid.rotation.x=-.35;scene.add(lid);
+  }
+  // scattered blocks, horses and staring heads.
+  for(let i=0;i<18;i++){const b=new THREE.Mesh(new THREE.BoxGeometry(.4+.2*(i%3),.4+.15*(i%2),.5),i%2?matWoodPale:matCloth);b.position.set(192+i*2.9,.25,(i%5-2)*.75);b.rotation.y=i*.7;scene.add(b);}
+  for(const lx of [194,207,220,234,242]){
+    const shade=new THREE.Mesh(new THREE.ConeGeometry(.52,.5,10,1,true),matIron);shade.position.set(lx,6,-.3);shade.rotation.x=Math.PI;scene.add(shade);
+    const pt=new THREE.PointLight(0xcddcff,22,11,1.8);pt.position.set(lx,5.7,-.3);scene.add(pt);nurseryLamps.push(pt);
+  }
+  const door=new THREE.Mesh(new THREE.BoxGeometry(2.5,3.3,.6),matIron);door.position.set(245,1.65,-2.5);scene.add(door);
+  const mouth=new THREE.Mesh(new THREE.PlaneGeometry(1.8,2.55),new THREE.MeshBasicMaterial({color:0x010205}));mouth.position.set(245,1.5,-2.17);scene.add(mouth);
+}
+
+const dolls=[];
+function addDoll(x,z,phase){
+ const g=new THREE.Group();
+ const dress=new THREE.Mesh(new THREE.ConeGeometry(.42,.95,8),new THREE.MeshStandardMaterial({color:phase%2?0x35445a:0x49333e,roughness:.9}));dress.position.y=.5;g.add(dress);
+ const head=new THREE.Mesh(new THREE.SphereGeometry(.25,12,9),matPorcelain);head.position.y=1.18;head.castShadow=true;g.add(head);
+ const eyeGeo=new THREE.SphereGeometry(.035,6,5), eyeL=new THREE.Mesh(eyeGeo,matCrack),eyeR=new THREE.Mesh(eyeGeo,matCrack);eyeL.position.set(.22,1.23,.07);eyeR.position.set(.22,1.23,-.07);g.add(eyeL,eyeR);
+ const crack=new THREE.Mesh(new THREE.BoxGeometry(.02,.24,.02),matCrack);crack.position.set(.245,1.08,.02);crack.rotation.x=.45;g.add(crack);
+ g.position.set(x,0,z);scene.add(g);dolls.push({mesh:g,x,z,homeX:x,phase,state:'still',steps:0});
+}
+for(const d of [[198,1.4,0],[205,-1.5,1],[214,1.2,2],[222,-1.3,3],[230,1.5,4],[238,-1.1,5],[241,1.4,6]])addDoll(...d);
+function childWatches(d){
+ const dx=d.x-player.x,dz=d.z-player.z,dist=Math.hypot(dx,dz);
+ if(dist>11||player.hidden)return false;
+ if(Math.sign(dx)!==player.face&&Math.abs(dx)>.8)return false;
+ return Math.abs(dz)<3.2;
+}
+function updateNursery(dt,t){
+ nurseryTime+=dt;
+ const cycle=nurseryTime%10.5;
+ nurseryLightsOn=nurseryForced===null?cycle<6.8:!!nurseryForced;
+ for(const l of nurseryLamps){l.intensity=nurseryLightsOn?22*(.9+.1*Math.sin(t*17+l.position.x)):0.22;}
+ for(const d of dolls){
+  const watched=childWatches(d), canMove=!nurseryLightsOn&&!watched&&!player.dead&&!player.win;
+  d.state=canMove?'creep':(watched?'watched':'still');
+  if(canMove){
+   const dx=player.x-d.x,dz=player.z-d.z,dd=Math.hypot(dx,dz)||1;
+   d.x+=dx/dd*2.15*dt;d.z+=dz/dd*2.15*dt;d.steps++;
+  }
+  const dist=Math.hypot(player.x-d.x,player.z-d.z);
+  if(dist<.78&&!player.hidden&&!player.dead) caught(d);
+  d.mesh.position.set(d.x,Math.abs(Math.sin(t*8+d.phase))*(canMove?.045:0),d.z);
+  d.mesh.rotation.y=Math.atan2(player.z-d.z,player.x-d.x)-Math.PI/2;
+ }
+}
+addMorsel(203,0,-.5);addMorsel(218,0,1.5);addMorsel(232,0,-.2);addMorsel(241,0,.4);
+
 // ---------------- QA hooks ----------------
 window.__frames = 0;
 window.__ut = {
-  v: 4,
+  v: 5,
   player: () => ({ x: +player.x.toFixed(2), y: +player.y.toFixed(2), z: +player.z.toFixed(2), hunger: +player.hunger.toFixed(1), hidden: player.hidden, sneak: player.sneak, grounded: player.grounded, caught: player.caught, win: player.win, dead: player.dead, growled: player.growled || 0 }),
   stewards: () => stewards.map(s => ({ x: +s.x.toFixed(2), z: +s.z.toFixed(2), state: s.state })),
   noises: () => noiseEvents.length,
@@ -1135,4 +1216,9 @@ window.__ut = {
   guests: () => guests.map(g => ({ x:+g.x.toFixed(2), z:+g.z.toFixed(2), state:g.state, noticed:g.noticed })),
   guestCanReach: (i) => guestCanReach(guests[i]),
   guestReset: () => { for(const g of guests){g.state='eat';g.reach=0;} },
+  dolls: () => dolls.map(d=>({x:+d.x.toFixed(2),z:+d.z.toFixed(2),state:d.state,steps:d.steps})),
+  nurseryLights: () => nurseryLightsOn,
+  nurseryForce: (on) => { nurseryForced=on===null?null:!!on; },
+  watches: (i) => childWatches(dolls[i]),
+  face: (f) => { player.face=f<0?-1:1; },
 };
