@@ -1,4 +1,4 @@
-// THE UNDERTIDE v7 - a small thing in a house of eaters.
+// THE UNDERTIDE v8 - a small thing in a house of eaters.
 // A 3D spiritual sequel in the spirit of Little Nightmares: oversized world,
 // a child alone, grotesque adults, hunger, hiding, dread. three.js, no dialogue.
 import * as THREE from './three.module.js';
@@ -568,7 +568,7 @@ function updatePlayer(dt) {
   player.x += player.vx * dt;
   player.z += player.vz * dt;
   player.z = Math.max(ZMIN, Math.min(ZMAX, player.z));
-  player.x = player.deck === 6 ? Math.max(322.4, Math.min(388.6, player.x)) : (player.deck === 5 ? Math.max(254.4, Math.min(314.6, player.x)) : (player.deck === 4 ? Math.max(189.4, Math.min(246.6, player.x)) : (player.deck === 3 ? Math.max(119.4, Math.min(180.6, player.x)) : (player.deck === 2 ? Math.max(60.2, Math.min(111.6, player.x)) : Math.max(-9.6, Math.min(43.6, player.x))))));
+  player.x = player.deck === 7 ? Math.max(394.4, Math.min(466.6, player.x)) : (player.deck === 6 ? Math.max(322.4, Math.min(388.6, player.x)) : (player.deck === 5 ? Math.max(254.4, Math.min(314.6, player.x)) : (player.deck === 4 ? Math.max(189.4, Math.min(246.6, player.x)) : (player.deck === 3 ? Math.max(119.4, Math.min(180.6, player.x)) : (player.deck === 2 ? Math.max(60.2, Math.min(111.6, player.x)) : Math.max(-9.6, Math.min(43.6, player.x)))))));
   const pr = 0.26;
   for (const b of blockers) {
     if (player.y < b.top - 0.28 &&
@@ -683,12 +683,14 @@ function updatePlayer(dt) {
     player.respawnTimer=setTimeout(()=>{player.x=256;player.z=0;player.y=0;player.vx=player.vy=player.vz=0;player.grounded=true;player.checkpoint={x:256,z:0};player.dead=false;setBaths(true);fadeEl.style.opacity=0;player.respawnTimer=null;},900);
   }
   if(player.deck===5&&player.x>311.5&&!player.dead){player.deck=6;player.dead=true;fadeEl.style.opacity=1;if(player.respawnTimer)clearTimeout(player.respawnTimer);player.respawnTimer=setTimeout(()=>{player.x=324;player.z=0;player.y=0;player.vx=player.vy=player.vz=0;player.grounded=true;player.checkpoint={x:324,z:0};player.dead=false;setFurnace(true);fadeEl.style.opacity=0;player.respawnTimer=null;},900);}
-  if(player.deck===6&&player.x>385.5){player.win=true;fadeEl.style.opacity=1;msgEl.innerHTML='<h1>THE FIRE ATE THE EMPTY CAGES</h1><p>you kept the small shape inside.</p><p class="dim">THE UNDERTIDE · v7 · the Bell Tower turns above</p>';}
+  if(player.deck===6&&player.x>385.5&&!player.dead){player.deck=7;player.dead=true;fadeEl.style.opacity=1;if(player.respawnTimer)clearTimeout(player.respawnTimer);player.respawnTimer=setTimeout(()=>{player.x=396;player.z=0;player.y=0;player.vx=player.vy=player.vz=0;player.grounded=true;player.checkpoint={x:396,z:0};player.dead=false;setBellTower(true);fadeEl.style.opacity=0;player.respawnTimer=null;},900);}
+  if(player.deck===7&&player.x>463.5){player.win=true;fadeEl.style.opacity=1;msgEl.innerHTML='<h1>THE BELL SWALLOWED THE STORM</h1><p>your shadow slipped between its teeth.</p><p class="dim">THE UNDERTIDE · v8 · the Dormitory dreams below</p>';}
+
 
 }
 
 function drainHunger(dt) {
-  player.hunger = Math.max(0, player.hunger - dt * (100 / 240) * (player.deck === 2 ? 1.5 : (player.deck === 3 ? 1.25 : (player.deck === 4 ? 1.15 : (player.deck === 5 ? 1.35 : (player.deck === 6 ? 1.4 : 1))))));
+  player.hunger = Math.max(0, player.hunger - dt * (100 / 240) * (player.deck === 2 ? 1.5 : (player.deck === 3 ? 1.25 : (player.deck === 4 ? 1.15 : (player.deck === 5 ? 1.35 : (player.deck === 6 ? 1.4 : (player.deck === 7 ? 1.2 : 1)))))));
   player.growlT -= dt;
   if (player.hunger < 35 && player.growlT <= 0) {
     player.growlT = player.hunger <= 0 ? 5 + Math.random() * 2 : 8 + Math.random() * 4;
@@ -847,8 +849,10 @@ function tick() {
       updateNursery(dt, t);
     } else if (player.deck === 5) {
       updateBaths(dt, t);
-    } else {
+    } else if (player.deck === 6) {
       updateFurnace(dt, t);
+    } else {
+      updateBellTower(dt, t);
     }
   }
   // pose the child
@@ -1281,10 +1285,58 @@ function updateFurnace(dt,t){
 }
 addMorsel(332,0,-1.2);addMorsel(347,0,1);addMorsel(366,0,-1);addMorsel(381,0,1.1);
 
+
+// ---------------- deck 7: THE BELL TOWER ----------------
+const matBrass=new THREE.MeshStandardMaterial({color:0x665124,metalness:.75,roughness:.37});
+const towerFog=new THREE.Color(0x060710),gearTeeth=[];
+let towerOn=false,lightning=false,flashTimer=0,stormClock=0,gearRide=null,gearCarry=0,flashCount=0,bellSightings=0;
+function setBellTower(on){if(!on)return;towerOn=true;scene.fog.color.copy(towerFog);scene.background.copy(towerFog);scene.fog.density=.018;stormClock=0;}
+{
+ // entry and exit balconies separated by the clockworks void
+ solidBox(401,-.25,0,13,.5,8,matIron,{cast:false});solidBox(458,-.25,0,16,.5,8,matIron,{cast:false});
+ const wall=new THREE.Mesh(new THREE.BoxGeometry(75,22,.7),matWall);wall.position.set(430,9,-3.6);scene.add(wall);
+ const ceil=new THREE.Mesh(new THREE.BoxGeometry(75,.7,10),matDark);ceil.position.set(430,13,0);scene.add(ceil);
+ // clock face and immense bell
+ const face=new THREE.Mesh(new THREE.CylinderGeometry(5.5,5.5,.4,32),matPale);face.rotation.x=Math.PI/2;face.position.set(430,7,-3.05);scene.add(face);
+ for(let i=0;i<12;i++){const a=i/12*Math.PI*2,m=new THREE.Mesh(new THREE.BoxGeometry(.18,.7,.18),matDark);m.position.set(430+Math.sin(a)*4.7,7+Math.cos(a)*4.7,-2.75);m.rotation.z=-a;scene.add(m);}
+ const bell=new THREE.Mesh(new THREE.CylinderGeometry(1.1,2.3,4,18,1,true),matBrass);bell.position.set(453,8,-.5);scene.add(bell);
+ const rope=new THREE.Mesh(new THREE.CylinderGeometry(.05,.05,9,6),matWoodPale);rope.position.set(453,3.5,-.5);scene.add(rope);
+ for(const x of [399,415,433,451,463]){const pt=new THREE.PointLight(0x8a91af,5,12,1.8);pt.position.set(x,6,0);scene.add(pt);}
+ // cover walls break the flash sightline
+ for(const cx of [406,448]){solidBox(cx,1.4,1.3,2.2,2.8,2.0,matIron,{blocker:true});hideVolumes.push({x0:cx-1,x1:cx+1,z0:.4,z1:2.2});}
+}
+// Three meshing wheels. Their outer teeth are moving platforms over the void.
+const gears=[];
+function addGear(cx,cy,r,count,speed){
+ const hub=new THREE.Mesh(new THREE.CylinderGeometry(r*.48,r*.48,.7,18),matBrass);hub.rotation.x=Math.PI/2;hub.position.set(cx,cy,-.5);scene.add(hub);
+ const g={cx,cy,r,count,speed,angle:0,teeth:[]};
+ for(let i=0;i<count;i++){const m=new THREE.Mesh(new THREE.BoxGeometry(1.5,.42,2.0),matBrass);scene.add(m);const t={mesh:m,i,x:0,y:0,prevX:0,prevY:0};g.teeth.push(t);gearTeeth.push(t);}gears.push(g);
+}
+addGear(416,4,5.2,10,.34);addGear(430,5.2,6.2,12,-.26);addGear(445,4.2,5.4,10,.31);
+
+const bellringer={x:456,z:0,face:-1,state:'idle',seen:0,mesh:null};
+{
+ const g=new THREE.Group();const body=new THREE.Mesh(new THREE.CylinderGeometry(.7,1.25,4.2,10),matApron);body.position.y=2.1;g.add(body);const head=new THREE.Mesh(new THREE.SphereGeometry(.5,10,8),matPale);head.position.y=4.5;head.scale.set(.8,1.5,1);g.add(head);const earmuffs=new THREE.Mesh(new THREE.BoxGeometry(.3,.85,1.3),matIron);earmuffs.position.y=4.55;g.add(earmuffs);g.position.set(bellringer.x,0,bellringer.z);scene.add(g);bellringer.mesh=g;
+}
+function bellringerSees(){if(!lightning||player.hidden||player.dead||player.win||player.deck!==7)return false;const dx=player.x-bellringer.x,dz=player.z-bellringer.z;if(Math.hypot(dx,dz)>18||Math.sign(dx)!==bellringer.face)return false;for(const b of [{x0:404.9,x1:407.1},{x0:446.9,x1:449.1}])if(player.x>=b.x0&&player.x<=b.x1&&Math.abs(player.z-1.3)<1.2)return false;return player.y<7;}
+function updateBellTower(dt,t){
+ stormClock+=dt;flashTimer-=dt;
+ if(flashTimer<=0&&stormClock>4.2){lightning=true;flashTimer=.32;stormClock=0;flashCount++;scene.background.set(0x9199b8);scene.fog.color.set(0x6f7896);}
+ if(lightning&&flashTimer<=0){lightning=false;scene.background.copy(towerFog);scene.fog.color.copy(towerFog);}
+ // update teeth, then carry a child standing on one
+ gearRide=null;
+ for(const g of gears){g.angle+=g.speed*dt;for(const q of g.teeth){q.prevX=q.x;q.prevY=q.y;const a=g.angle+q.i/g.count*Math.PI*2;q.x=g.cx+Math.cos(a)*g.r;q.y=g.cy+Math.sin(a)*g.r;q.mesh.position.set(q.x,q.y,-.1);q.mesh.rotation.z=a;const on=Math.abs(player.x-q.x)<.9&&Math.abs(player.y-(q.y+.3))<.38&&Math.abs(player.z)<1.1&&player.vy<=0;if(on){gearRide=q;player.x+=q.x-q.prevX;player.y=q.y+.3;player.grounded=true;player.vy=0;gearCarry+=Math.hypot(q.x-q.prevX,q.y-q.prevY);}}}
+ if(bellringerSees()){bellringer.seen++;bellSightings++;bellringer.state='charge';bellringer.tx=player.x;}
+ if(bellringer.state==='charge'){bellringer.x-=2.8*dt;bellringer.face=-1;if(!lightning&&Math.abs(bellringer.x-(bellringer.tx||456))<.8)bellringer.state='search';if(!player.hidden&&Math.hypot(player.x-bellringer.x,player.z)<1.0)caught(bellringer);}
+ else if(bellringer.state==='search'){bellringer.x+=1.2*dt;if(bellringer.x>=456){bellringer.x=456;bellringer.state='idle';}}
+ bellringer.mesh.position.x=bellringer.x;
+}
+addMorsel(401,0,-1);addMorsel(430,0,1.2);addMorsel(456,0,-1);addMorsel(461,0,1);
+
 // ---------------- QA hooks ----------------
 window.__frames = 0;
 window.__ut = {
-  v: 7,
+  v: 8,
   player: () => ({ x: +player.x.toFixed(2), y: +player.y.toFixed(2), z: +player.z.toFixed(2), hunger: +player.hunger.toFixed(1), hidden: player.hidden, sneak: player.sneak, grounded: player.grounded, caught: player.caught, win: player.win, dead: player.dead, growled: player.growled || 0 }),
   stewards: () => stewards.map(s => ({ x: +s.x.toFixed(2), z: +s.z.toFixed(2), state: s.state })),
   noises: () => noiseEvents.length,
@@ -1329,4 +1381,9 @@ window.__ut = {
   belt: () => ({carry:+beltCarryTotal.toFixed(2),under:!!beltAt(player.x,player.z),grounded:player.grounded,hidden:player.hidden,cages:cages.map(c=>({x:+c.x.toFixed(2),carried:+c.carried.toFixed(2)}))}),
   custodian: () => ({state:custodian.state,targetX:+custodian.targetX.toFixed(2),strikes:custodian.strikes,total:shovelStrikes}),
   forceStrike: () => {custodian.state='raise';custodian.timer=.05;custodian.targetX=player.x;},
+  gears: () => ({ride:!!gearRide,carry:+gearCarry.toFixed(2),angles:gears.map(g=>+g.angle.toFixed(3)),teeth:gearTeeth.slice(0,3).map(q=>({x:+q.x.toFixed(2),y:+q.y.toFixed(2)}))}),
+  lightning: () => ({on:lightning,flashes:flashCount,sightings:bellSightings}),
+  forceFlash: () => {stormClock=5;flashTimer=-1;},
+  bellringer: () => ({x:+bellringer.x.toFixed(2),state:bellringer.state,seen:bellringer.seen}),
+  bellSees: () => bellringerSees(),
 };
