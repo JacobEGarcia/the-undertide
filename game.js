@@ -1,4 +1,4 @@
-// THE UNDERTIDE v6 - a small thing in a house of eaters.
+// THE UNDERTIDE v7 - a small thing in a house of eaters.
 // A 3D spiritual sequel in the spirit of Little Nightmares: oversized world,
 // a child alone, grotesque adults, hunger, hiding, dread. three.js, no dialogue.
 import * as THREE from './three.module.js';
@@ -568,7 +568,7 @@ function updatePlayer(dt) {
   player.x += player.vx * dt;
   player.z += player.vz * dt;
   player.z = Math.max(ZMIN, Math.min(ZMAX, player.z));
-  player.x = player.deck === 5 ? Math.max(254.4, Math.min(314.6, player.x)) : (player.deck === 4 ? Math.max(189.4, Math.min(246.6, player.x)) : (player.deck === 3 ? Math.max(119.4, Math.min(180.6, player.x)) : (player.deck === 2 ? Math.max(60.2, Math.min(111.6, player.x)) : Math.max(-9.6, Math.min(43.6, player.x)))));
+  player.x = player.deck === 6 ? Math.max(322.4, Math.min(388.6, player.x)) : (player.deck === 5 ? Math.max(254.4, Math.min(314.6, player.x)) : (player.deck === 4 ? Math.max(189.4, Math.min(246.6, player.x)) : (player.deck === 3 ? Math.max(119.4, Math.min(180.6, player.x)) : (player.deck === 2 ? Math.max(60.2, Math.min(111.6, player.x)) : Math.max(-9.6, Math.min(43.6, player.x))))));
   const pr = 0.26;
   for (const b of blockers) {
     if (player.y < b.top - 0.28 &&
@@ -682,12 +682,13 @@ function updatePlayer(dt) {
     if(player.respawnTimer)clearTimeout(player.respawnTimer);
     player.respawnTimer=setTimeout(()=>{player.x=256;player.z=0;player.y=0;player.vx=player.vy=player.vz=0;player.grounded=true;player.checkpoint={x:256,z:0};player.dead=false;setBaths(true);fadeEl.style.opacity=0;player.respawnTimer=null;},900);
   }
-  if(player.deck===5&&player.x>311.5){player.win=true;fadeEl.style.opacity=1;msgEl.innerHTML='<h1>THE WATER FORGOT YOUR NAME</h1><p>but something below remembers your steps.</p><p class="dim">THE UNDERTIDE · v6 · the Furnace waits below</p>';}
+  if(player.deck===5&&player.x>311.5&&!player.dead){player.deck=6;player.dead=true;fadeEl.style.opacity=1;if(player.respawnTimer)clearTimeout(player.respawnTimer);player.respawnTimer=setTimeout(()=>{player.x=324;player.z=0;player.y=0;player.vx=player.vy=player.vz=0;player.grounded=true;player.checkpoint={x:324,z:0};player.dead=false;setFurnace(true);fadeEl.style.opacity=0;player.respawnTimer=null;},900);}
+  if(player.deck===6&&player.x>385.5){player.win=true;fadeEl.style.opacity=1;msgEl.innerHTML='<h1>THE FIRE ATE THE EMPTY CAGES</h1><p>you kept the small shape inside.</p><p class="dim">THE UNDERTIDE · v7 · the Bell Tower turns above</p>';}
 
 }
 
 function drainHunger(dt) {
-  player.hunger = Math.max(0, player.hunger - dt * (100 / 240) * (player.deck === 2 ? 1.5 : (player.deck === 3 ? 1.25 : (player.deck === 4 ? 1.15 : (player.deck === 5 ? 1.35 : 1)))));
+  player.hunger = Math.max(0, player.hunger - dt * (100 / 240) * (player.deck === 2 ? 1.5 : (player.deck === 3 ? 1.25 : (player.deck === 4 ? 1.15 : (player.deck === 5 ? 1.35 : (player.deck === 6 ? 1.4 : 1))))));
   player.growlT -= dt;
   if (player.hunger < 35 && player.growlT <= 0) {
     player.growlT = player.hunger <= 0 ? 5 + Math.random() * 2 : 8 + Math.random() * 4;
@@ -844,8 +845,10 @@ function tick() {
       updateGuests(dt, t);
     } else if (player.deck === 4) {
       updateNursery(dt, t);
-    } else {
+    } else if (player.deck === 5) {
       updateBaths(dt, t);
+    } else {
+      updateFurnace(dt, t);
     }
   }
   // pose the child
@@ -1229,10 +1232,59 @@ function updateBaths(dt,t){
 }
 addMorsel(265,2.3,-1.2);addMorsel(278,0,1.6);addMorsel(298,2.3,-1.2);addMorsel(307,0,-.3);
 
+
+// ---------------- deck 6: THE FURNACE ----------------
+const matFurnace=new THREE.MeshStandardMaterial({color:0x211412,roughness:.88});
+const matEmber=new THREE.MeshStandardMaterial({color:0x7c2410,emissive:0xff3b0a,emissiveIntensity:1.7,roughness:.6});
+const furnaceFog=new THREE.Color(0x190705),beltSegments=[],cages=[];
+let furnaceOn=false,beltCarryTotal=0,shovelStrikes=0;
+function setFurnace(on){if(!on)return;furnaceOn=true;scene.fog.color.copy(furnaceFog);scene.background.copy(furnaceFog);scene.fog.density=.024;}
+{
+ solidBox(355.5,-.35,0,67,.7,8,matFurnace,{cast:false});
+ const wall=new THREE.Mesh(new THREE.BoxGeometry(69,17,.7),matWall);wall.position.set(355.5,7.8,-3.5);scene.add(wall);
+ const ceil=new THREE.Mesh(new THREE.BoxGeometry(69,.7,10),matIron);ceil.position.set(355.5,10,0);scene.add(ceil);
+ // moving belt lane, broken by safe metal islands
+ for(const [cx,sx] of [[334,18],[351,12],[367,14],[380,10]]){
+   const b=new THREE.Mesh(new THREE.BoxGeometry(sx,.22,3.3),matIron);b.position.set(cx,.12,0);scene.add(b);
+   beltSegments.push({x0:cx-sx/2,x1:cx+sx/2,z0:-1.65,z1:1.65,speed:1.25+((cx/7)%1)});
+   for(let x=cx-sx/2+.5;x<cx+sx/2;x+=1.2){const slat=new THREE.Mesh(new THREE.BoxGeometry(.08,.05,3.15),matWood);slat.position.set(x,.27,0);scene.add(slat);}
+ }
+ // furnace mouth at the right of each run
+ for(const x of [343.2,357.2,374.2,386.2]){const glow=new THREE.PointLight(0xff3b18,18,11,1.7);glow.position.set(x,2.2,-1.9);scene.add(glow);const grate=new THREE.Mesh(new THREE.BoxGeometry(.5,4,3.5),matEmber);grate.position.set(x,2,-2.8);scene.add(grate);}
+ // overhead pipes and chains
+ for(const x of [327,338,349,361,373,384]){const pipe=new THREE.Mesh(new THREE.CylinderGeometry(.15,.15,8,8),matIron);pipe.position.set(x,5.5,-2.9);scene.add(pipe);}
+ // safe coal bins / hide spots
+ for(const cx of [345.5,359.5,376.2]){solidBox(cx,.75,2,2.8,1.5,1.7,matWood,{blocker:true});hideVolumes.push({x0:cx-1.25,x1:cx+1.25,z0:1.25,z1:2.35});}
+ for(const x of [327,346,365,383]){const pt=new THREE.PointLight(0xff7a32,15,13,1.8);pt.position.set(x,5,-.3);scene.add(pt);}
+}
+function addCage(x,z){const g=new THREE.Group();for(const dx of [-.65,.65])for(const dz of [-.55,.55]){const bar=new THREE.Mesh(new THREE.CylinderGeometry(.035,.035,1.7,5),matIron);bar.position.set(dx,.85,dz);g.add(bar);}const top=new THREE.Mesh(new THREE.BoxGeometry(1.5,.12,1.3),matIron);top.position.y=1.7;g.add(top);const bottom=top.clone();bottom.position.y=.05;g.add(bottom);g.position.set(x,0,z);scene.add(g);cages.push({mesh:g,x,z,carried:0});}
+for(const c of [[329,0],[337,-.4],[349,.4],[365,-.3],[379,.3]])addCage(...c);
+
+// The Custodian stands behind the belt. A rising shovel telegraphs every strike.
+const custodian={x:358,z:-2.15,phase:0,state:'wait',timer:2.2,targetX:0,strikes:0,mesh:null,shovel:null};
+{
+ const g=new THREE.Group();const body=new THREE.Mesh(new THREE.CylinderGeometry(.65,1.05,3.6,10),matApron);body.position.y=1.8;g.add(body);const head=new THREE.Mesh(new THREE.SphereGeometry(.48,10,8),matPale);head.position.y=3.9;head.scale.y=1.3;g.add(head);const sh=new THREE.Mesh(new THREE.BoxGeometry(.32,4.3,.18),matIron);sh.position.set(1,3.1,0);sh.rotation.z=-.55;g.add(sh);g.position.set(custodian.x,0,custodian.z);scene.add(g);custodian.mesh=g;custodian.shovel=sh;
+}
+function beltAt(x,z){return beltSegments.find(b=>x>=b.x0&&x<=b.x1&&z>=b.z0&&z<=b.z1);}
+function updateFurnace(dt,t){
+ const b=beltAt(player.x,player.z);if(b&&player.grounded&&!player.hidden){const d=b.speed*dt;player.x+=d;beltCarryTotal+=d;}
+ for(const c of cages){const cb=beltAt(c.x,c.z);if(cb){c.x+=cb.speed*dt;c.carried+=cb.speed*dt;if(c.x>cb.x1)c.x=cb.x0+.4;c.mesh.position.x=c.x;}}
+ const c=custodian;c.phase+=dt;c.timer-=dt;
+ if(c.state==='wait'&&c.timer<=0){c.state='raise';c.timer=.9;c.targetX=Math.max(326,Math.min(384,player.x));}
+ else if(c.state==='raise'){c.shovel.rotation.z+=dt*1.6;if(c.timer<=0){c.state='strike';c.timer=.28;c.strikes++;shovelStrikes++;emitNoise(c.targetX,0,9);}}
+ else if(c.state==='strike'){
+   c.shovel.rotation.z=-1.35+Math.sin((.28-c.timer)/.28*Math.PI)*1.8;
+   if(c.timer<.17&&!player.hidden&&!player.dead&&Math.abs(player.x-c.targetX)<1.35&&Math.abs(player.z)<1.8&&player.y<1.6)caught(c);
+   if(c.timer<=0){c.state='recover';c.timer=1.25;}
+ }else if(c.state==='recover'){c.shovel.rotation.z=-.55;if(c.timer<=0){c.state='wait';c.timer=1.8+Math.random()*1.2;}}
+ c.mesh.position.x=350+Math.sin(t*.18)*13;
+}
+addMorsel(332,0,-1.2);addMorsel(347,0,1);addMorsel(366,0,-1);addMorsel(381,0,1.1);
+
 // ---------------- QA hooks ----------------
 window.__frames = 0;
 window.__ut = {
-  v: 6,
+  v: 7,
   player: () => ({ x: +player.x.toFixed(2), y: +player.y.toFixed(2), z: +player.z.toFixed(2), hunger: +player.hunger.toFixed(1), hidden: player.hidden, sneak: player.sneak, grounded: player.grounded, caught: player.caught, win: player.win, dead: player.dead, growled: player.growled || 0 }),
   stewards: () => stewards.map(s => ({ x: +s.x.toFixed(2), z: +s.z.toFixed(2), state: s.state })),
   noises: () => noiseEvents.length,
@@ -1274,4 +1326,7 @@ window.__ut = {
   bathThing: () => ({x:+thing.x.toFixed(2),z:+thing.z.toFixed(2),state:thing.state,followed:thing.ripplesFollowed,caught:bathCaughtCount}),
   bathRipple: (x,z,r=8) => bathRipple(x,z,r),
   bathNoises: () => bathNoiseCount,
+  belt: () => ({carry:+beltCarryTotal.toFixed(2),under:!!beltAt(player.x,player.z),grounded:player.grounded,hidden:player.hidden,cages:cages.map(c=>({x:+c.x.toFixed(2),carried:+c.carried.toFixed(2)}))}),
+  custodian: () => ({state:custodian.state,targetX:+custodian.targetX.toFixed(2),strikes:custodian.strikes,total:shovelStrikes}),
+  forceStrike: () => {custodian.state='raise';custodian.timer=.05;custodian.targetX=player.x;},
 };
