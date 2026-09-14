@@ -1,4 +1,4 @@
-// THE UNDERTIDE v8 - a small thing in a house of eaters.
+// THE UNDERTIDE v9 - a small thing in a house of eaters.
 // A 3D spiritual sequel in the spirit of Little Nightmares: oversized world,
 // a child alone, grotesque adults, hunger, hiding, dread. three.js, no dialogue.
 import * as THREE from './three.module.js';
@@ -568,7 +568,7 @@ function updatePlayer(dt) {
   player.x += player.vx * dt;
   player.z += player.vz * dt;
   player.z = Math.max(ZMIN, Math.min(ZMAX, player.z));
-  player.x = player.deck === 7 ? Math.max(394.4, Math.min(466.6, player.x)) : (player.deck === 6 ? Math.max(322.4, Math.min(388.6, player.x)) : (player.deck === 5 ? Math.max(254.4, Math.min(314.6, player.x)) : (player.deck === 4 ? Math.max(189.4, Math.min(246.6, player.x)) : (player.deck === 3 ? Math.max(119.4, Math.min(180.6, player.x)) : (player.deck === 2 ? Math.max(60.2, Math.min(111.6, player.x)) : Math.max(-9.6, Math.min(43.6, player.x)))))));
+  player.x = player.deck === 8 ? Math.max(474.4, Math.min(548.6, player.x)) : (player.deck === 7 ? Math.max(394.4, Math.min(466.6, player.x)) : (player.deck === 6 ? Math.max(322.4, Math.min(388.6, player.x)) : (player.deck === 5 ? Math.max(254.4, Math.min(314.6, player.x)) : (player.deck === 4 ? Math.max(189.4, Math.min(246.6, player.x)) : (player.deck === 3 ? Math.max(119.4, Math.min(180.6, player.x)) : (player.deck === 2 ? Math.max(60.2, Math.min(111.6, player.x)) : Math.max(-9.6, Math.min(43.6, player.x))))))));
   const pr = 0.26;
   for (const b of blockers) {
     if (player.y < b.top - 0.28 &&
@@ -684,13 +684,15 @@ function updatePlayer(dt) {
   }
   if(player.deck===5&&player.x>311.5&&!player.dead){player.deck=6;player.dead=true;fadeEl.style.opacity=1;if(player.respawnTimer)clearTimeout(player.respawnTimer);player.respawnTimer=setTimeout(()=>{player.x=324;player.z=0;player.y=0;player.vx=player.vy=player.vz=0;player.grounded=true;player.checkpoint={x:324,z:0};player.dead=false;setFurnace(true);fadeEl.style.opacity=0;player.respawnTimer=null;},900);}
   if(player.deck===6&&player.x>385.5&&!player.dead){player.deck=7;player.dead=true;fadeEl.style.opacity=1;if(player.respawnTimer)clearTimeout(player.respawnTimer);player.respawnTimer=setTimeout(()=>{player.x=396;player.z=0;player.y=0;player.vx=player.vy=player.vz=0;player.grounded=true;player.checkpoint={x:396,z:0};player.dead=false;setBellTower(true);fadeEl.style.opacity=0;player.respawnTimer=null;},900);}
-  if(player.deck===7&&player.x>463.5){player.win=true;fadeEl.style.opacity=1;msgEl.innerHTML='<h1>THE BELL SWALLOWED THE STORM</h1><p>your shadow slipped between its teeth.</p><p class="dim">THE UNDERTIDE · v8 · the Dormitory dreams below</p>';}
+  if(player.deck===7&&player.x>463.5&&!player.dead){player.deck=8;player.dead=true;fadeEl.style.opacity=1;if(player.respawnTimer)clearTimeout(player.respawnTimer);player.respawnTimer=setTimeout(()=>{player.x=476;player.z=0;player.y=0;player.vx=player.vy=player.vz=0;player.grounded=true;player.checkpoint={x:476,z:0};player.dead=false;setDormitory(true);fadeEl.style.opacity=0;player.respawnTimer=null;},900);}
+  if(player.deck===8&&player.x>545.5){player.win=true;fadeEl.style.opacity=1;msgEl.innerHTML='<h1>THE DREAM KEPT BREATHING</h1><p>you passed beneath every open mouth.</p><p class="dim">THE UNDERTIDE · v9 · the Chapel listens ahead</p>';}
+
 
 
 }
 
 function drainHunger(dt) {
-  player.hunger = Math.max(0, player.hunger - dt * (100 / 240) * (player.deck === 2 ? 1.5 : (player.deck === 3 ? 1.25 : (player.deck === 4 ? 1.15 : (player.deck === 5 ? 1.35 : (player.deck === 6 ? 1.4 : (player.deck === 7 ? 1.2 : 1)))))));
+  player.hunger = Math.max(0, player.hunger - dt * (100 / 240) * (player.deck === 2 ? 1.5 : (player.deck === 3 ? 1.25 : (player.deck === 4 ? 1.15 : (player.deck === 5 ? 1.35 : (player.deck === 6 ? 1.4 : (player.deck === 7 ? 1.2 : (player.deck === 8 ? 1.1 : 1))))))));
   player.growlT -= dt;
   if (player.hunger < 35 && player.growlT <= 0) {
     player.growlT = player.hunger <= 0 ? 5 + Math.random() * 2 : 8 + Math.random() * 4;
@@ -851,8 +853,10 @@ function tick() {
       updateBaths(dt, t);
     } else if (player.deck === 6) {
       updateFurnace(dt, t);
-    } else {
+    } else if (player.deck === 7) {
       updateBellTower(dt, t);
+    } else {
+      updateDormitory(dt, t);
     }
   }
   // pose the child
@@ -1333,10 +1337,54 @@ function updateBellTower(dt,t){
 }
 addMorsel(401,0,-1);addMorsel(430,0,1.2);addMorsel(456,0,-1);addMorsel(461,0,1);
 
+
+// ---------------- deck 8: THE DORMITORY ----------------
+const matSheet=new THREE.MeshStandardMaterial({color:0x77756b,roughness:.98});
+const dormFog=new THREE.Color(0x090d0e),sleepers=[];
+let dormNoise=0,wokenTotal=0;
+function setDormitory(on){if(!on)return;scene.fog.color.copy(dormFog);scene.background.copy(dormFog);scene.fog.density=.027;}
+{
+ solidBox(511.5,-.25,0,75,.5,8,matFloor,{cast:false});
+ const wall=new THREE.Mesh(new THREE.BoxGeometry(77,16,.7),matWall);wall.position.set(511.5,7.5,-3.5);scene.add(wall);
+ const ceil=new THREE.Mesh(new THREE.BoxGeometry(77,.7,10),matDark);ceil.position.set(511.5,10,0);scene.add(ceil);
+ for(const x of [478,493,508,523,538,546]){const pt=new THREE.PointLight(0x83958a,7,13,1.9);pt.position.set(x,5.6,-.4);scene.add(pt);}
+ // exit door
+ const d=new THREE.Mesh(new THREE.BoxGeometry(2.5,3.3,.6),matIron);d.position.set(547,1.65,-2.5);scene.add(d);
+}
+function addSleeper(cx,side,phase){
+ const z=side*1.25,g=new THREE.Group();
+ const frame=new THREE.Mesh(new THREE.BoxGeometry(9,.42,2.5),matIron);frame.position.y=1.6;g.add(frame);
+ for(const x of [-4.1,4.1]){const leg=new THREE.Mesh(new THREE.BoxGeometry(.25,1.6,.25),matIron);leg.position.set(x,.8,0);g.add(leg);}
+ const body=new THREE.Mesh(new THREE.CapsuleGeometry(.75,4.5,5,10),matSheet);body.rotation.z=Math.PI/2;body.position.set(.2,2.15,0);g.add(body);
+ const head=new THREE.Mesh(new THREE.SphereGeometry(.65,12,9),matPale);head.position.set(-3.1,2.3,0);g.add(head);
+ const mouth=new THREE.Mesh(new THREE.TorusGeometry(.16,.07,6,9,Math.PI),matCrack);mouth.position.set(-3.65,2.18,side>0?-.1:.1);mouth.rotation.y=Math.PI/2;g.add(mouth);
+ g.position.set(cx,0,z);scene.add(g);
+ const hide={x0:cx-4.1,x1:cx+4.1,z0:z-1,z1:z+1};hideVolumes.push(hide);
+ sleepers.push({mesh:g,body,head,cx,z,phase,state:'sleep',wake:0,alarm:0});
+}
+for(let i=0;i<7;i++)addSleeper(483+i*9.5,i%2?1:-1,i*.77);
+function wakeSleeper(s){if(s.state==='sleep'){s.state='stir';s.wake=0;s.alarm++;wokenTotal++;}}
+function updateDormitory(dt,t){
+ const speed=Math.hypot(player.vx,player.vz),running=speed>2.2&&!player.sneak&&!player.hidden;
+ if(running&&player.grounded){player.dormStep=(player.dormStep||0)+dt;if(player.dormStep>.3){player.dormStep=0;dormNoise++;for(const s of sleepers)if(Math.hypot(player.x-s.cx,player.z-s.z)<9)wakeSleeper(s);}}
+ for(const s of sleepers){
+  s.phase+=dt;const breath=Math.sin(s.phase*1.35);
+  if(s.state==='sleep'){s.body.scale.y=1+breath*.05;s.head.position.y=2.3+breath*.025;}
+  else if(s.state==='stir'){s.wake+=dt;s.head.rotation.z=Math.min(1.1,s.wake*1.5);if(s.wake>.8)s.state='reach';}
+  else if(s.state==='reach'){
+   const dx=player.x-s.cx,dz=player.z-s.z,dist=Math.hypot(dx,dz);
+   s.mesh.rotation.z=Math.sin(s.phase*3)*.04;
+   if(!player.hidden&&player.y>1.15&&dist<5.2)caught(s);
+   if(dist>11){s.state='sleep';s.wake=0;s.head.rotation.z=0;}
+  }
+ }
+}
+addMorsel(486,0,0);addMorsel(505,0,0);addMorsel(524,0,0);addMorsel(543,0,0);
+
 // ---------------- QA hooks ----------------
 window.__frames = 0;
 window.__ut = {
-  v: 8,
+  v: 9,
   player: () => ({ x: +player.x.toFixed(2), y: +player.y.toFixed(2), z: +player.z.toFixed(2), hunger: +player.hunger.toFixed(1), hidden: player.hidden, sneak: player.sneak, grounded: player.grounded, caught: player.caught, win: player.win, dead: player.dead, growled: player.growled || 0 }),
   stewards: () => stewards.map(s => ({ x: +s.x.toFixed(2), z: +s.z.toFixed(2), state: s.state })),
   noises: () => noiseEvents.length,
@@ -1386,4 +1434,7 @@ window.__ut = {
   forceFlash: () => {stormClock=5;flashTimer=-1;},
   bellringer: () => ({x:+bellringer.x.toFixed(2),state:bellringer.state,seen:bellringer.seen}),
   bellSees: () => bellringerSees(),
+  sleepers: () => sleepers.map(s=>({x:s.cx,state:s.state,alarm:s.alarm,wake:+s.wake.toFixed(2)})),
+  dormStats: () => ({noise:dormNoise,woken:wokenTotal}),
+  wakeSleeper: (i) => wakeSleeper(sleepers[i]),
 };
