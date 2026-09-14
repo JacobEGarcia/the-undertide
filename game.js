@@ -1,4 +1,4 @@
-// THE UNDERTIDE v9 - a small thing in a house of eaters.
+// THE UNDERTIDE v10 - a small thing in a house of eaters.
 // A 3D spiritual sequel in the spirit of Little Nightmares: oversized world,
 // a child alone, grotesque adults, hunger, hiding, dread. three.js, no dialogue.
 import * as THREE from './three.module.js';
@@ -568,7 +568,7 @@ function updatePlayer(dt) {
   player.x += player.vx * dt;
   player.z += player.vz * dt;
   player.z = Math.max(ZMIN, Math.min(ZMAX, player.z));
-  player.x = player.deck === 8 ? Math.max(474.4, Math.min(548.6, player.x)) : (player.deck === 7 ? Math.max(394.4, Math.min(466.6, player.x)) : (player.deck === 6 ? Math.max(322.4, Math.min(388.6, player.x)) : (player.deck === 5 ? Math.max(254.4, Math.min(314.6, player.x)) : (player.deck === 4 ? Math.max(189.4, Math.min(246.6, player.x)) : (player.deck === 3 ? Math.max(119.4, Math.min(180.6, player.x)) : (player.deck === 2 ? Math.max(60.2, Math.min(111.6, player.x)) : Math.max(-9.6, Math.min(43.6, player.x))))))));
+  player.x = player.deck === 9 ? Math.max(556.4, Math.min(634.6, player.x)) : (player.deck === 8 ? Math.max(474.4, Math.min(548.6, player.x)) : (player.deck === 7 ? Math.max(394.4, Math.min(466.6, player.x)) : (player.deck === 6 ? Math.max(322.4, Math.min(388.6, player.x)) : (player.deck === 5 ? Math.max(254.4, Math.min(314.6, player.x)) : (player.deck === 4 ? Math.max(189.4, Math.min(246.6, player.x)) : (player.deck === 3 ? Math.max(119.4, Math.min(180.6, player.x)) : (player.deck === 2 ? Math.max(60.2, Math.min(111.6, player.x)) : Math.max(-9.6, Math.min(43.6, player.x)))))))));
   const pr = 0.26;
   for (const b of blockers) {
     if (player.y < b.top - 0.28 &&
@@ -685,14 +685,16 @@ function updatePlayer(dt) {
   if(player.deck===5&&player.x>311.5&&!player.dead){player.deck=6;player.dead=true;fadeEl.style.opacity=1;if(player.respawnTimer)clearTimeout(player.respawnTimer);player.respawnTimer=setTimeout(()=>{player.x=324;player.z=0;player.y=0;player.vx=player.vy=player.vz=0;player.grounded=true;player.checkpoint={x:324,z:0};player.dead=false;setFurnace(true);fadeEl.style.opacity=0;player.respawnTimer=null;},900);}
   if(player.deck===6&&player.x>385.5&&!player.dead){player.deck=7;player.dead=true;fadeEl.style.opacity=1;if(player.respawnTimer)clearTimeout(player.respawnTimer);player.respawnTimer=setTimeout(()=>{player.x=396;player.z=0;player.y=0;player.vx=player.vy=player.vz=0;player.grounded=true;player.checkpoint={x:396,z:0};player.dead=false;setBellTower(true);fadeEl.style.opacity=0;player.respawnTimer=null;},900);}
   if(player.deck===7&&player.x>463.5&&!player.dead){player.deck=8;player.dead=true;fadeEl.style.opacity=1;if(player.respawnTimer)clearTimeout(player.respawnTimer);player.respawnTimer=setTimeout(()=>{player.x=476;player.z=0;player.y=0;player.vx=player.vy=player.vz=0;player.grounded=true;player.checkpoint={x:476,z:0};player.dead=false;setDormitory(true);fadeEl.style.opacity=0;player.respawnTimer=null;},900);}
-  if(player.deck===8&&player.x>545.5){player.win=true;fadeEl.style.opacity=1;msgEl.innerHTML='<h1>THE DREAM KEPT BREATHING</h1><p>you passed beneath every open mouth.</p><p class="dim">THE UNDERTIDE · v9 · the Chapel listens ahead</p>';}
+  if(player.deck===8&&player.x>545.5&&!player.dead){player.deck=9;player.dead=true;fadeEl.style.opacity=1;if(player.respawnTimer)clearTimeout(player.respawnTimer);player.respawnTimer=setTimeout(()=>{player.x=558;player.z=0;player.y=0;player.vx=player.vy=player.vz=0;player.grounded=true;player.checkpoint={x:558,z:0};player.dead=false;setChapel(true);fadeEl.style.opacity=0;player.respawnTimer=null;},900);}
+  if(player.deck===9&&player.x>631.5){player.win=true;fadeEl.style.opacity=1;msgEl.innerHTML='<h1>EVERY FACE TURNED AFTER YOU</h1><p>none saw the small thing above.</p><p class="dim">THE UNDERTIDE · v10 · the Maw opens below</p>';}
+
 
 
 
 }
 
 function drainHunger(dt) {
-  player.hunger = Math.max(0, player.hunger - dt * (100 / 240) * (player.deck === 2 ? 1.5 : (player.deck === 3 ? 1.25 : (player.deck === 4 ? 1.15 : (player.deck === 5 ? 1.35 : (player.deck === 6 ? 1.4 : (player.deck === 7 ? 1.2 : (player.deck === 8 ? 1.1 : 1))))))));
+  player.hunger = Math.max(0, player.hunger - dt * (100 / 240) * (player.deck === 2 ? 1.5 : (player.deck === 3 ? 1.25 : (player.deck === 4 ? 1.15 : (player.deck === 5 ? 1.35 : (player.deck === 6 ? 1.4 : (player.deck === 7 ? 1.2 : (player.deck === 8 ? 1.1 : (player.deck === 9 ? 1.25 : 1)))))))));
   player.growlT -= dt;
   if (player.hunger < 35 && player.growlT <= 0) {
     player.growlT = player.hunger <= 0 ? 5 + Math.random() * 2 : 8 + Math.random() * 4;
@@ -855,8 +857,10 @@ function tick() {
       updateFurnace(dt, t);
     } else if (player.deck === 7) {
       updateBellTower(dt, t);
-    } else {
+    } else if (player.deck === 8) {
       updateDormitory(dt, t);
+    } else {
+      updateChapel(dt, t);
     }
   }
   // pose the child
@@ -1381,10 +1385,52 @@ function updateDormitory(dt,t){
 }
 addMorsel(486,0,0);addMorsel(505,0,0);addMorsel(524,0,0);addMorsel(543,0,0);
 
+
+// ---------------- deck 9: THE CHAPEL ----------------
+const matChapel=new THREE.MeshStandardMaterial({color:0x24201c,roughness:.96});
+const matWax=new THREE.MeshStandardMaterial({color:0xd8c98f,emissive:0x6a4c15,emissiveIntensity:.35,roughness:.7});
+const chapelFog=new THREE.Color(0x0c0908),mannequins=[],chandeliers=[];
+let floorTouches=0,headsTurned=0,chapelOn=false;
+function setChapel(on){if(!on)return;chapelOn=true;scene.fog.color.copy(chapelFog);scene.background.copy(chapelFog);scene.fog.density=.035;}
+{
+ solidBox(595.5,-.25,0,79,.5,8,matChapel,{cast:false});
+ const wall=new THREE.Mesh(new THREE.BoxGeometry(81,22,.7),matWall);wall.position.set(595.5,9,-3.5);scene.add(wall);
+ const ceil=new THREE.Mesh(new THREE.BoxGeometry(81,.7,10),matDark);ceil.position.set(595.5,14,0);scene.add(ceil);
+ // colossal altar and pew rows
+ solidBox(627,2.1,-1.5,9,4.2,3,matIron,{platform:true,blocker:true});
+ for(const cx of [565,577,589,601,613]){
+   solidBox(cx,1.25,0,7.5,.3,3,matWood,{platform:true});
+   solidBox(cx-.2,.65,-1.2,7.2,1.3,.25,matWood,{blocker:true});
+ }
+ for(const x of [560,576,592,608,624,632]){const pt=new THREE.PointLight(0xffbd65,9,12,1.8);pt.position.set(x,6,-.3);scene.add(pt);}
+}
+function addMannequin(x,z,phase){
+ const g=new THREE.Group();const body=new THREE.Mesh(new THREE.CylinderGeometry(.38,.6,1.7,8),matSheet);body.position.y=.85;body.rotation.z=.3;g.add(body);const headPivot=new THREE.Group();headPivot.position.set(.25,1.75,0);const head=new THREE.Mesh(new THREE.SphereGeometry(.31,10,8),matPorcelain);head.scale.y=1.2;headPivot.add(head);g.add(headPivot);g.position.set(x,0,z);scene.add(g);mannequins.push({mesh:g,head:headPivot,x,z,phase,turn:0,alerts:0});
+}
+for(let i=0;i<18;i++)addMannequin(563+(i%9)*7.5,i<9?-2:2,i*.41);
+// Five hanging chandeliers are broad moving platforms above the judging floor.
+function addChandelier(x,y,phase){
+ const g=new THREE.Group();const rope=new THREE.Mesh(new THREE.CylinderGeometry(.035,.035,5,6),matIron);rope.position.y=2.5;g.add(rope);const ring=new THREE.Mesh(new THREE.TorusGeometry(1.35,.14,8,20),matBrass);ring.rotation.x=Math.PI/2;g.add(ring);for(let i=0;i<6;i++){const a=i/6*Math.PI*2,c=new THREE.Mesh(new THREE.CylinderGeometry(.08,.1,.55,6),matWax);c.position.set(Math.cos(a)*1.25,.35,Math.sin(a)*1.25);g.add(c);}g.position.set(x,y,0);scene.add(g);const plat={x0:x-1.5,x1:x+1.5,z0:-1.5,z1:1.5,y};platforms.push(plat);chandeliers.push({mesh:g,x,y,phase,plat,angle:0});
+}
+for(let i=0;i<5;i++)addChandelier(568+i*13.2,4.1+(i%2)*1.0,i*.9);
+function chapelFloorTouch(){floorTouches++;for(const m of mannequins){m.turn=1.4;m.alerts++;headsTurned++;}}
+function updateChapel(dt,t){
+ // Keep platform registrations synced to the slow pendulum.
+ for(const c of chandeliers){c.angle=Math.sin(t*.55+c.phase)*.15;const nx=c.x+Math.sin(c.angle)*2.2;c.mesh.position.x=nx;c.mesh.rotation.z=c.angle;c.plat.x0=nx-1.5;c.plat.x1=nx+1.5;}
+ const touching=player.grounded&&player.y<.35&&!player.hidden;
+ if(touching){player.chapelStep=(player.chapelStep||0)+dt;if(player.chapelStep>.55){player.chapelStep=0;chapelFloorTouch();}}
+ for(const m of mannequins){
+   m.turn=Math.max(0,m.turn-dt);const target=Math.atan2(player.z-m.z,player.x-m.x);m.head.rotation.y+=(target-m.head.rotation.y)*Math.min(1,dt*(m.turn>0?10:1));
+   const dist=Math.hypot(player.x-m.x,player.z-m.z);
+   if(m.turn>.25&&!player.hidden&&player.y<1.2&&dist<4.4)caught(m);
+ }
+}
+addMorsel(566,1.4,0);addMorsel(587,0,0);addMorsel(608,1.4,0);addMorsel(628,4.2,-1.2);
+
 // ---------------- QA hooks ----------------
 window.__frames = 0;
 window.__ut = {
-  v: 9,
+  v: 10,
   player: () => ({ x: +player.x.toFixed(2), y: +player.y.toFixed(2), z: +player.z.toFixed(2), hunger: +player.hunger.toFixed(1), hidden: player.hidden, sneak: player.sneak, grounded: player.grounded, caught: player.caught, win: player.win, dead: player.dead, growled: player.growled || 0 }),
   stewards: () => stewards.map(s => ({ x: +s.x.toFixed(2), z: +s.z.toFixed(2), state: s.state })),
   noises: () => noiseEvents.length,
@@ -1437,4 +1483,7 @@ window.__ut = {
   sleepers: () => sleepers.map(s=>({x:s.cx,state:s.state,alarm:s.alarm,wake:+s.wake.toFixed(2)})),
   dormStats: () => ({noise:dormNoise,woken:wokenTotal}),
   wakeSleeper: (i) => wakeSleeper(sleepers[i]),
+  chapel: () => ({touches:floorTouches,turned:headsTurned,heads:mannequins.map(m=>({turn:+m.turn.toFixed(2),alerts:m.alerts})),chandeliers:chandeliers.map(c=>({x:+c.mesh.position.x.toFixed(2),y:c.y}))}),
+  chapelTouch: () => chapelFloorTouch(),
+  camSnap: () => { camX=player.x+2; },
 };
