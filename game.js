@@ -75,7 +75,7 @@ const GAP = { x0: 23.5, x1: 25.5 }; // open floor grate - fall and the dark take
 
 function surfaceAt(x, z, refY = Infinity) {
   // highest walkable top at (x,z) that is not above refY
-  let g = (x > GAP.x0 && x < GAP.x1) ? -1e9 : 0;
+  let g = ((x > GAP.x0 && x < GAP.x1) || (x > 67 && x < 94)) ? -1e9 : 0;
   for (const p of platforms) {
     if (x >= p.x0 && x <= p.x1 && z >= p.z0 && z <= p.z1 && p.y > g && p.y <= refY) g = p.y;
   }
@@ -270,7 +270,7 @@ const player = {
   x: -6, y: 0, z: 0, vx: 0, vy: 0, vz: 0,
   grounded: true, sneak: false, hidden: false,
   hunger: 100, face: 1, eating: 0, coyote: 0, buffer: 0,
-  growlT: 6, bob: 0, checkpoint: { x: -6, z: 0 }, caught: 0, win: false, dead: false,
+  growlT: 6, bob: 0, checkpoint: { x: -6, z: 0 }, caught: 0, win: false, dead: false, deck: 1,
 };
 
 const child = new THREE.Group();
@@ -506,7 +506,8 @@ function tryInteract() {
 const noiseEvents = []; // QA observability
 function emitNoise(x, z, r) {
   noiseEvents.push({ x, z, r, t: performance.now() });
-  for (const s of stewards) {
+  const ears = (typeof freezerSteward !== 'undefined' && player.deck === 2) ? [freezerSteward] : stewards;
+  for (const s of ears) {
     const d = Math.hypot(s.x - x, s.z - z);
     if (d < r) {
       if (d < r * 0.5 && !player.hidden) {
@@ -528,6 +529,11 @@ const RUN = 4.2, SNEAK = 1.55, GRAV = -22, JUMPV = 8.8, ACCEL = 26;
 // ---------------- player update ----------------
 function updatePlayer(dt) {
   if (player.dead || player.win) return;
+  if (riding) {
+    if (player.buffer > 0) { player.buffer = 0; releaseCarcass(); }
+    else drainHunger(dt);
+    return;
+  }
   if (player.hidden) { // hidden: still hungry, still mortal, but still
     drainHunger(dt * 0.7);
     return;
@@ -555,14 +561,14 @@ function updatePlayer(dt) {
   player.buffer -= dt; player.coyote -= dt;
   if (player.buffer > 0 && (player.grounded || player.coyote > 0)) {
     player.vy = JUMPV; player.grounded = false; player.buffer = 0; player.coyote = 0;
-  }
+  } else if (player.buffer > 0 && !player.grounded && player.deck === 2) { tryGrabCarcass(); if (!riding) {} else player.buffer = 0; }
 
   // integrate x/z with blocker push-out
   const wasX = player.x, wasZ = player.z;
   player.x += player.vx * dt;
   player.z += player.vz * dt;
   player.z = Math.max(ZMIN, Math.min(ZMAX, player.z));
-  player.x = Math.max(-9.6, Math.min(43.6, player.x));
+  player.x = player.deck === 2 ? Math.max(60.2, Math.min(111.6, player.x)) : Math.max(-9.6, Math.min(43.6, player.x));
   const pr = 0.26;
   for (const b of blockers) {
     if (player.y < b.top - 0.28 &&
@@ -594,8 +600,11 @@ function updatePlayer(dt) {
       } else player.y = newY;
     } else player.y = newY;
   }
-  // the grate gap
+  // the pit and the grate gap
   if (player.y < -5) { respawn('the dark below took you'); return; }
+
+  // falling past a carcass: small hands catch
+  if (!player.grounded && !riding && player.deck === 2) tryGrabCarcass();
 
   // moving noise
   const spd = Math.hypot(player.vx, player.vz);
@@ -635,16 +644,31 @@ function updatePlayer(dt) {
   // hunger
   drainHunger(dt);
 
-  // win
-  if (player.x > 38.6) {
+  // the hatch: down into the cold
+  if (player.deck === 1 && player.x > 38.6 && !player.dead) {
+    player.deck = 2;
+    player.dead = true;
+    fadeEl.style.opacity = 1;
+    if (player.respawnTimer) clearTimeout(player.respawnTimer);
+    player.respawnTimer = setTimeout(() => {
+      player.x = 61; player.z = 0; player.y = 0; player.vx = 0; player.vy = 0; player.vz = 0; player.grounded = true;
+      player.checkpoint = { x: 61, z: 0 };
+      player.dead = false;
+      setCold(true);
+      fadeEl.style.opacity = 0;
+      player.respawnTimer = null;
+    }, 900);
+  }
+  // the vent out of the freezer
+  if (player.deck === 2 && player.x > 106) {
     player.win = true;
     fadeEl.style.opacity = 1;
-    msgEl.innerHTML = '<h1>YOU SLIP INTO THE DARK BELOW</h1><p>the galley chews on without you</p><p class="dim">THE UNDERTIDE · v1 · the descent continues in v2</p>';
+    msgEl.innerHTML = '<h1>THE COLD KEEPS WHAT IT TAKES</h1><p>but not you. not today</p><p class="dim">THE UNDERTIDE · v3 · the Guests are waiting in v4</p>';
   }
 }
 
 function drainHunger(dt) {
-  player.hunger = Math.max(0, player.hunger - dt * (100 / 240));
+  player.hunger = Math.max(0, player.hunger - dt * (100 / 240) * (player.deck === 2 ? 1.5 : 1));
   player.growlT -= dt;
   if (player.hunger < 35 && player.growlT <= 0) {
     player.growlT = player.hunger <= 0 ? 5 + Math.random() * 2 : 8 + Math.random() * 4;
@@ -740,9 +764,11 @@ function caught(s) {
 }
 
 function respawn(why) {
+  if (player.dead) return;
   player.dead = true;
   fadeEl.style.opacity = 1;
-  setTimeout(() => {
+  if (player.respawnTimer) clearTimeout(player.respawnTimer);
+  player.respawnTimer = setTimeout(() => {
     player.x = player.checkpoint.x; player.z = player.checkpoint.z; player.y = surfaceAt(player.x, player.z, Infinity);
     player.vx = 0; player.vy = 0; player.vz = 0; player.grounded = true;
     player.hidden = false; player.eating = 0;
@@ -750,6 +776,7 @@ function respawn(why) {
     for (const st of stewards) { st.state = 'return'; st.x = st.home; st.z = 0; }
     player.dead = false;
     fadeEl.style.opacity = 0;
+    player.respawnTimer = null;
   }, 900);
 }
 
@@ -788,9 +815,14 @@ function tick() {
   const t = clock.elapsedTime;
   if (started) {
     updatePlayer(dt);
-    for (const s of stewards) updateSteward(s, dt);
-    updateWatchman(dt);
-    updateNomes(dt, t);
+    if (player.deck === 1) {
+      for (const s of stewards) updateSteward(s, dt);
+      updateWatchman(dt);
+      updateNomes(dt, t);
+    } else {
+      updateFreezerSteward(dt);
+      updateCarcasses(dt);
+    }
   }
   // pose the child
   child.position.set(player.x, player.y, player.z);
@@ -813,11 +845,147 @@ function tick() {
 }
 tick();
 
+
+// ---------------- deck 2: THE FREEZER ----------------
+const matFrost = new THREE.MeshStandardMaterial({ color: 0x9fb8c0, roughness: 0.55 });
+const matCarcass = new THREE.MeshStandardMaterial({ color: 0x5a2620, roughness: 0.5 });
+const matCold = new THREE.MeshStandardMaterial({ color: 0x1c2a30, roughness: 0.9 });
+
+let coldOn = false;
+const warmFog = new THREE.Color(0x050f0c), coldFog = new THREE.Color(0x0a151b);
+function setCold(on) {
+  coldOn = on;
+  scene.fog.color.copy(on ? coldFog : warmFog);
+  scene.background.copy(on ? coldFog : warmFog);
+}
+
+{
+  // entry platform, then the pit, then the far side (x 60..112)
+  solidBox(63.5, -0.25, 0, 7, 0.5, 8, matCold, { cast: false });
+  solidBox(103, -0.25, 0, 18, 0.5, 8, matCold, { cast: false });
+  // frost skin on the platforms
+  for (const [cx, sx] of [[63.5, 7], [103, 18]]) {
+    const frost = new THREE.Mesh(new THREE.BoxGeometry(sx, 0.06, 8), matFrost);
+    frost.position.set(cx, 0.03, 0); frost.receiveShadow = true; scene.add(frost);
+  }
+  // cold glow in the pit
+  const pitglow = new THREE.Mesh(new THREE.PlaneGeometry(29, 8), new THREE.MeshBasicMaterial({ color: 0x0d222e }));
+  pitglow.rotation.x = -Math.PI / 2; pitglow.position.set(81.5, -4.2, 0); scene.add(pitglow);
+  // walls + ceiling
+  const w = new THREE.Mesh(new THREE.BoxGeometry(56, 14, 0.6), matWall); w.position.set(84, 6.5, -3.4); w.receiveShadow = true; scene.add(w);
+  const ceil = new THREE.Mesh(new THREE.BoxGeometry(56, 0.6, 10), matCold); ceil.position.set(84, 8.6, 0); scene.add(ceil);
+  // icicles
+  for (let i = 0; i < 26; i++) {
+    const ix = 58 + Math.random() * 52, iz = -3 + Math.random() * 5, ih = 0.4 + Math.random() * 1.4;
+    const ic = new THREE.Mesh(new THREE.ConeGeometry(0.07 + Math.random() * 0.08, ih, 6), matFrost);
+    ic.rotation.x = Math.PI; ic.position.set(ix, 8.3 - ih / 2, iz); scene.add(ic);
+  }
+  // static carcass rows against the wall (the rest of the forest)
+  for (let x = 62; x < 110; x += 2.6) {
+    const c = new THREE.Mesh(new THREE.CapsuleGeometry(0.34, 1.5, 4, 8), matCarcass);
+    c.position.set(x, 5.6, -2.2); c.castShadow = true; scene.add(c);
+    const ch = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 2.4), matIron);
+    ch.position.set(x, 7.4, -2.2); scene.add(ch);
+  }
+  // cold lamps
+  for (const lx of [63, 78, 92, 105]) {
+    const pt = new THREE.PointLight(0xa8d8e8, 10, 12, 1.8); pt.position.set(lx, 5.5, -0.5); scene.add(pt);
+    const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.08, 6, 5), new THREE.MeshStandardMaterial({ color: 0xcfeef8, emissive: 0xa8d8e8, emissiveIntensity: 2 }));
+    bulb.position.set(lx, 5.5, -0.5); scene.add(bulb);
+  }
+  // the vent out
+  const vf = new THREE.Mesh(new THREE.BoxGeometry(2.0, 2.6, 0.5), matIron); vf.position.set(108, 1.3, -2.4); scene.add(vf);
+  const vm = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 2.0), new THREE.MeshBasicMaterial({ color: 0x04100c })); vm.position.set(108, 1.2, -2.13); scene.add(vm);
+  const vl = new THREE.PointLight(0x87ffb0, 5, 6, 2); vl.position.set(108, 2.4, -1.6); scene.add(vl);
+  // freezer steward on the far side
+  // (built below in the steward section)
+  // deck-2 blockers for the entry/far platforms' walls
+  const entryWall = new THREE.Mesh(new THREE.BoxGeometry(0.6, 12, 8), matWall); entryWall.position.set(59.7, 5.5, 0); scene.add(entryWall);
+  const farWall = new THREE.Mesh(new THREE.BoxGeometry(0.6, 12, 8), matWall); farWall.position.set(112.3, 5.5, 0); scene.add(farWall);
+}
+
+// the swinging row: seven carcasses over the pit
+const carcasses = [];
+{
+  const PIVOT_Y = 7.5, L = 4.3;
+  for (let i = 0; i < 7; i++) {
+    const cx = 68.5 + i * 4.2;
+    const g = new THREE.Group();
+    const chain = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, L, 5), matIron);
+    chain.position.y = -L / 2; g.add(chain);
+    const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.42, 1.7, 4, 8), matCarcass);
+    body.position.y = -L; body.castShadow = true; g.add(body);
+    const frostCap = new THREE.Mesh(new THREE.SphereGeometry(0.3, 8, 6), matFrost);
+    frostCap.position.y = -L + 0.9; g.add(frostCap);
+    g.position.set(cx, PIVOT_Y, 0);
+    scene.add(g);
+    carcasses.push({ mesh: g, x: cx, pivotY: PIVOT_Y, L, theta: 0, omega: 0 });
+  }
+}
+let riding = null; // carcass the child is hanging from
+
+function updateCarcasses(dt) {
+  for (const c of carcasses) {
+    if (riding === c) {
+      // pendulum with pumping
+      const pump = ((keys.ArrowRight || keys.KeyD) ? 1 : 0) - ((keys.ArrowLeft || keys.KeyA) ? 1 : 0);
+      c.omega += (-9.8 / c.L) * Math.sin(c.theta) * dt + pump * 1.9 * dt;
+      c.omega *= (1 - dt * 0.12);
+      c.theta += c.omega * dt;
+      c.theta = Math.max(-1.25, Math.min(1.25, c.theta));
+      // the chains groan when worked hard
+      if (Math.abs(c.omega) > 0.9 && (c.groanAcc = (c.groanAcc || 0) + dt) > 1.2) { c.groanAcc = 0; emitNoise(player.x, player.z, 6); }
+    } else {
+      c.omega += (-9.8 / c.L) * Math.sin(c.theta) * dt;
+      c.omega *= (1 - dt * 0.5);
+      c.theta += c.omega * dt;
+    }
+    c.mesh.rotation.z = c.theta;
+  }
+  if (riding) {
+    const c = riding;
+    player.x = c.x + Math.sin(c.theta) * c.L;
+    player.y = c.pivotY - Math.cos(c.theta) * c.L - 0.9;
+    player.z = 0;
+  }
+}
+
+function tryGrabCarcass() {
+  if (riding || player.grounded || player.deck !== 2) return;
+  for (const c of carcasses) {
+    const bx = c.x + Math.sin(c.theta) * c.L, by = c.pivotY - Math.cos(c.theta) * c.L;
+    if (Math.hypot(player.x - bx, player.y + 0.9 - by) < 1.3 && Math.abs(player.z) < 1.2) {
+      riding = c;
+      c.omega = Math.sign(player.vx || 1) * Math.max(0.4, Math.abs(player.vx) / c.L);
+      player.vx = 0; player.vy = 0;
+      return;
+    }
+  }
+}
+function releaseCarcass() {
+  if (!riding) return;
+  const c = riding; riding = null;
+  const tangential = c.omega * c.L;
+  player.vx = Math.cos(c.theta) * tangential * 1.35;
+  player.vy = 6.2 + Math.abs(Math.sin(c.theta)) * 1.5;
+  player.grounded = false;
+  emitNoise(player.x, player.z, 3);
+}
+
+// the freezer's steward
+const freezerSteward = makeSteward(98, 106);
+function updateFreezerSteward(dt) { updateSteward(freezerSteward, dt); }
+
+// deck-2 morsels
+addMorsel(63.5, 0, -1.5);
+addMorsel(100.5, 0, 1.0);
+addMorsel(104.5, 0, -1.8);
+
 // ---------------- QA hooks ----------------
 window.__frames = 0;
 window.__ut = {
-  v: 2,
-  player: () => ({ x: +player.x.toFixed(2), y: +player.y.toFixed(2), z: +player.z.toFixed(2), hunger: +player.hunger.toFixed(1), hidden: player.hidden, sneak: player.sneak, grounded: player.grounded, caught: player.caught, win: player.win, growled: player.growled || 0 }),
+  v: 3,
+  player: () => ({ x: +player.x.toFixed(2), y: +player.y.toFixed(2), z: +player.z.toFixed(2), hunger: +player.hunger.toFixed(1), hidden: player.hidden, sneak: player.sneak, grounded: player.grounded, caught: player.caught, win: player.win, dead: player.dead, growled: player.growled || 0 }),
   stewards: () => stewards.map(s => ({ x: +s.x.toFixed(2), z: +s.z.toFixed(2), state: s.state })),
   noises: () => noiseEvents.length,
   morselsLeft: () => morsels.filter(m => !m.taken).length,
@@ -841,4 +1009,10 @@ window.__ut = {
   watchmanSet: (state, wait = 999) => { watchman.state = state; watchman.wait = wait; },
   nomes: () => nomes.map(n => ({ x: +n.x.toFixed(2), state: n.state })),
   crate: () => ({ x: +pushCrate.x.toFixed(2), top: pushCrate.s }),
+  deck: () => player.deck,
+  carcasses: () => carcasses.map(c => ({ x: c.x, theta: +c.theta.toFixed(2), omega: +c.omega.toFixed(2) })),
+  riding: () => (riding ? carcasses.indexOf(riding) : -1),
+  grab: () => tryGrabCarcass(),
+  release: () => releaseCarcass(),
+  freezerSteward: () => ({ x: +freezerSteward.x.toFixed(2), state: freezerSteward.state }),
 };
